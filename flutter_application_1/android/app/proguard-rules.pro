@@ -1,0 +1,2 @@
+-dontwarn com.stripe.**
+-dontwarn com.reactnativestripesdk.**

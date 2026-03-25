@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>College Canteen - Smart Campus</title>
+    <style>
+        :root { color-scheme: light only; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #e8e8e8 0%, #f5f5f5 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .container {
+            background: white;
+            border-radius: 24px;
+            padding: 50px 40px 60px 40px;
+            max-width: 500px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.08);
+            text-align: center;
+            animation: fadeIn 0.5s ease-out;
+        }
+        .logo-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-top: -30px;
+            margin-bottom: 20px;
+        }
+        .logo-container img { max-width: 350px; width: 100%; height: auto; }
+        h1 {
+            color: #2d8f4d; font-size: 32px; font-weight: 700;
+            margin-top: -40px; margin-bottom: 12px; line-height: 1.3;
+        }
+        .subtitle { color: #666; font-size: 16px; margin-bottom: 36px; font-weight: 400; }
+        .button {
+            width: 100%; padding: 18px 32px; border-radius: 50px;
+            font-size: 16px; font-weight: 600; cursor: pointer;
+            transition: all 0.3s ease; border: none; margin-bottom: 16px;
+            display: inline-block; text-decoration: none;
+        }
+        .button-primary {
+            background: linear-gradient(135deg, #5cb574 0%, #4a9960 100%);
+            color: white; box-shadow: 0 4px 15px rgba(76, 175, 80, 0.2);
+        }
+        .button-primary:hover {
+            transform: translateY(-2px); box-shadow: 0 6px 20px rgba(76, 175, 80, 0.3);
+            background: linear-gradient(135deg, #6bc785 0%, #5cb574 100%);
+        }
+        .button-secondary {
+            background: transparent; color: #4a9960;
+            border: 2px dashed #a8d9b4; font-weight: 600;
+        }
+        .button-secondary:hover {
+            background: rgba(168, 217, 180, 0.1); border-color: #5cb574; border-style: solid;
+        }
+        @media (max-width: 480px) {
+            .container { padding: 40px 28px 50px 28px; }
+            h1 { font-size: 28px; }
+            .subtitle { font-size: 15px; }
+            .logo-container img { max-width: 280px; }
+            .button { font-size: 15px; padding: 16px 28px; }
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo-container">
+            <img src="logo.png" alt="College Canteen">
+        </div>
+        <h1>Welcome to Smart Campus Canteen</h1>
+        <p class="subtitle">Choose how you want to order:</p>
+        <button class="button button-primary" onclick="openInBrowser()">
+            Open in Browser
+        </button>
+        <button class="button button-secondary" onclick="downloadAPK()">
+            Download APK for Android
+        </button>
+    </div>
+    <script>
+        function openInBrowser() {
+            window.location.href = '1login.html';
+        }
+        function downloadAPK() {
+            window.location.href = 'https://drive.google.com/file/d/1zotqyuLwrD40ClyIMxOd8hqF-gjLjNY2/view?usp=sharing'; 
+        }
+    </script>
+</body>
+</html>

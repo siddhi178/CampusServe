@@ -1,0 +1,1329 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Analytics - CampusServe</title>
+
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+
+    <style>
+      :root {
+        --bg-color: #f8f9fa;
+        --text-dark: #2d3436;
+        --text-light: #636e72;
+        --panel-bg: #ecf7f0;
+        --primary-green: #4caf50;
+        --mint-green: #e8f5e9;
+        --card-radius: 20px;
+        --shadow-sm: 0 4px 20px rgba(0, 0, 0, 0.02);
+        --shadow-hover: 0 10px 25px rgba(0, 0, 0, 0.06);
+        --theme-dark: #1a6922;
+        --theme-medium: #a3cca3;
+        --theme-light: #bedfc8;
+        --theme-pale: #c1e1ca;
+      }
+
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+        font-family: "Poppins", sans-serif;
+      }
+      body {
+        display: flex;
+        height: 100vh;
+        background-color: var(--bg-color);
+        overflow: hidden;
+        font-size: 14px;
+        color: var(--text-dark);
+      }
+
+      /* --- SIDEBAR --- */
+      .sidebar {
+        width: 250px;
+        background-color: #e7f3eb;
+        padding: 20px;
+        display: flex;
+        flex-direction: column;
+        border-right: 1px solid #dcdcdc;
+      }
+      .logo {
+        color: #007e00;
+        font-size: 1.5rem;
+        font-weight: bold;
+        margin-bottom: 40px;
+        text-align: center;
+        cursor: default;
+      }
+      .nav-links {
+        list-style: none;
+      }
+      .nav-links li {
+        margin-bottom: 15px;
+      }
+      .nav-links a {
+        text-decoration: none;
+        color: black;
+        font-size: 1rem;
+        font-weight: 500;
+        display: block;
+        padding: 10px 15px;
+        border-radius: 16px;
+        transition: 0.3s;
+        cursor: pointer;
+      }
+      .nav-links a.active {
+        background-color: #fff;
+        color: #016301;
+        font-size: 18px;
+        font-weight: bold;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+      }
+      .nav-links a:hover {
+        background-color: #c8e6c9;
+      }
+
+      .notification {
+        width: 45px;
+        height: 45px;
+        background: #fff;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        border: 1px solid var(--theme-medium);
+        cursor: pointer;
+        color: var(--theme-dark);
+      }
+      .notification i {
+        color: #ffd700; /* The yellow color */
+        -webkit-text-stroke: 1px black; /* This adds a 1px black outline to the icon character */
+        font-size: 1.2rem; /* Optional: adjust size to make it look balanced */
+      }
+      .menu-toggle-btn {
+        width: 42px;
+        height: 42px;
+        border-radius: 12px;
+        background: var(--theme-pale);
+        color: var(--theme-dark);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        border: 1px solid var(--theme-medium);
+      }
+
+      body,
+      .kpi-card,
+      .chart-card,
+      .grid-card {
+        user-select: none;
+        caret-color: transparent;
+      }
+
+      /* RIGHT PANEL */
+      .right-panel {
+        position: fixed;
+        top: 0;
+        right: -350px;
+        width: 320px;
+        height: 100vh;
+        background-color: #e8f5e9;
+        z-index: 2000;
+        box-shadow: -5px 0 15px rgba(0, 0, 0, 0.1);
+        transition: right 0.4s;
+        display: flex;
+        flex-direction: column;
+        overflow-y: auto;
+      }
+      .right-panel.open {
+        right: 0;
+      }
+      .panel-content {
+        display: none;
+        flex-direction: column;
+        padding: 80px 20px 20px 20px;
+        gap: 15px;
+        width: 100%;
+      }
+      .panel-content.active {
+        display: flex;
+      }
+      .panel-btn {
+        background-color: #ffffff;
+        border: 2px solid #e0e0e0;
+        color: #2e7d32;
+        padding: 12px 20px;
+        border-radius: 30px;
+        font-weight: 600;
+        font-size: 0.9rem;
+        text-align: left;
+        cursor: pointer;
+        transition: all 0.2s;
+        text-decoration: none;
+        display: block;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+      }
+      .panel-btn:hover {
+        border-color: #4caf50;
+        color: #1b5e20;
+        transform: translateX(5px);
+      }
+      .panel-close-btn {
+        position: absolute;
+        top: 25px;
+        left: 20px;
+        width: 40px;
+        height: 40px;
+        border: 2px solid #1b5e20;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #1b5e20;
+        font-size: 20px;
+        cursor: pointer;
+        z-index: 1100;
+        transition: background-color 0.2s;
+      }
+      .panel-close-btn:hover {
+        background-color: #c8e6c9;
+      }
+
+      /* MAIN CONTENT */
+      .main-content {
+        flex: 1;
+        padding: 25px 40px;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+      }
+      .top-bar {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        margin-bottom: 30px;
+      }
+      .header-icons {
+        display: flex;
+        gap: 15px;
+        align-items: center;
+      }
+      .icon-btn {
+        width: 42px;
+        height: 42px;
+        background: #eef5f1;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        color: #2e7d32;
+        border: 1px solid #c8e6c9;
+        transition: 0.2s;
+      }
+      .icon-btn:hover {
+        background: #c8e6c9;
+      }
+
+      /* --- COMPACT WIDTH KPI ROW --- */
+      .overview-row {
+        display: grid;
+        /* Set 6 equal columns to make each card narrower */
+        grid-template-columns: repeat(6, 1fr);
+        gap: 15px;
+        margin-bottom: 30px;
+      }
+
+      .kpi-card,
+      .small-card {
+        background-color: var(--mint-green);
+        border-radius: var(--card-radius);
+        padding: 15px 10px;
+        text-align: center;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: space-between;
+        height: 190px; /* Height kept as original */
+        box-shadow: var(--shadow-sm);
+        transition: transform 0.2s;
+      }
+
+      .kpi-card:hover {
+        transform: translateY(-3px);
+        box-shadow: var(--shadow-hover);
+      }
+
+      /* Icons and Labels */
+      .kpi-icon {
+        font-size: 1.2rem;
+        color: var(--theme-dark);
+        opacity: 0.8;
+        margin-bottom: 2px;
+      }
+      .kpi-label {
+        font-size: 0.75rem;
+        font-weight: 700;
+        color: #555;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+
+      /* Standardize the white value box for both card types */
+      .kpi-value-box,
+      .small-card-inner {
+        background: #fff;
+        padding: 10px 5px;
+        border-radius: 15px;
+        width: 90%; /* Reduced width to fit inside narrower card */
+        margin: 5px 0;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.03);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 55px; /* Consistent height for the white box */
+      }
+      .kpi-value,
+      .small-card-inner {
+        font-size: 1.3rem;
+        font-weight: 700;
+        color: #000;
+        margin: 0;
+      }
+
+      .kpi-icon {
+        font-size: 1.5rem; /* Slightly smaller icon to save space */
+        color: #555;
+      }
+
+      /* Smaller Tabs */
+      .kpi-label {
+        font-size: 0.8rem; /* Smaller text for better fit */
+        font-weight: 600;
+        color: #555;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+      }
+
+      /* --- Pill Shaped Tab Design --- */
+      .kpi-tabs {
+        display: flex;
+        background: #ffffff; /* White background for the outer bar */
+        padding: 4px;
+        border-radius: 50px; /* Fully rounded capsule */
+        width: fit-content;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.02); /* Very subtle shadow */
+        margin-top: 5px;
+      }
+
+      .kpi-tab {
+        padding: 5px 14px;
+        border-radius: 50px; /* Individual pills are also fully rounded */
+        cursor: pointer;
+        color: #888; /* Grey for inactive tabs */
+        font-size: 0.72rem;
+        font-weight: 600;
+        transition: all 0.3s ease;
+      }
+
+      .kpi-tab.active {
+        background-color: #e7f3eb; /* Light green background from your --light-green variable */
+        color: #1a6922; /* Dark green text from your --theme-dark variable */
+        font-weight: 700;
+      }
+
+      .kpi-tab:hover:not(.active) {
+        color: #333; /* Darker grey on hover for better UX */
+      }
+
+      /* Last Two Cards Styling */
+      .small-card-inner {
+        background: #fff;
+        width: 85%;
+        height: 50px; /* Much smaller and neater */
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.4rem;
+        font-weight: 800;
+        margin-top: 5px;
+      }
+
+      /* CHARTS */
+      .charts-row {
+        display: grid;
+        grid-template-columns: 1fr 1.3fr;
+        gap: 25px;
+        margin-bottom: 30px;
+      }
+      .chart-card {
+        background: #fff;
+        border: 1px solid #eee;
+        border-radius: var(--card-radius);
+        padding: 25px;
+        height: 340px;
+        display: flex;
+        flex-direction: column;
+        box-shadow: var(--shadow-sm);
+        overflow: hidden;
+      }
+      .chart-header {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: #333;
+        margin-bottom: 15px;
+      }
+      .chart-canvas-wrapper {
+        flex: 1;
+        position: relative;
+      }
+
+      .top-selling-list {
+        flex: 1;
+        overflow-y: auto;
+        padding-right: 5px;
+      }
+      .top-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 10px 0;
+        border-bottom: 1px solid #f5f5f5;
+      }
+      .item-left {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      .item-img {
+        width: 40px;
+        height: 40px;
+        border-radius: 8px;
+        object-fit: cover;
+        background: #eef5f1;
+      }
+      .item-info h5 {
+        font-size: 0.9rem;
+        margin: 0;
+        color: #333;
+      }
+      .item-info span {
+        font-size: 0.75rem;
+        color: #888;
+      }
+      .item-qty {
+        font-weight: 700;
+        color: #2e7d32;
+        font-size: 0.9rem;
+      }
+      .item-rev {
+        font-size: 0.75rem;
+        color: #666;
+        text-align: right;
+      }
+
+      .charts-row-2 {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 25px;
+        margin-bottom: 40px;
+      }
+      .charts-row-full {
+        display: grid;
+        grid-template-columns: 1fr;
+        margin-bottom: 30px;
+      }
+      .peak-items-card {
+        background: #fff;
+        border: 1px solid #eee;
+        border-radius: var(--card-radius);
+        padding: 20px;
+        min-height: 400px;
+        height: 60vh;
+        box-shadow: var(--shadow-sm);
+        display: flex;
+        flex-direction: column;
+        margin-bottom: 30px;
+      }
+
+      /* KEY METRICS */
+      .section-title {
+        font-size: 1.2rem;
+        font-weight: 700;
+        color: #2e7d32;
+        margin-bottom: 20px;
+      }
+      .matrix-top-row {
+        display: grid;
+        grid-template-columns: 1.5fr 1fr;
+        gap: 25px;
+        margin-bottom: 25px;
+      }
+      .matrix-card {
+        background: #fff;
+        border: 1px solid #4caf50;
+        border-radius: var(--card-radius);
+        padding: 25px;
+        box-shadow: var(--shadow-sm);
+        height: 100%;
+      }
+      .cat-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 15px;
+        font-weight: 600;
+        color: #555;
+      }
+      .cat-bar-bg {
+        flex: 1;
+        height: 12px;
+        background: #e0e0e0;
+        border-radius: 6px;
+        margin: 0 20px;
+      }
+      .cat-bar-fill {
+        height: 100%;
+        background: #66bb6a;
+        border-radius: 6px;
+        transition: width 0.5s;
+      }
+
+      .best-item-container {
+        position: relative;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        text-align: center;
+      }
+      .best-item-img {
+        width: 100px;
+        height: 100px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 4px solid #e8f5e9;
+        margin-bottom: 15px;
+      }
+      .best-badge {
+        position: absolute;
+        top: 0;
+        right: 0;
+        font-size: 1.8rem;
+        color: #f9a825;
+      }
+      .best-name {
+        font-size: 1.4rem;
+        font-weight: 800;
+        color: #1b5e20;
+      }
+      .best-desc {
+        font-size: 0.9rem;
+        color: #666;
+        margin-bottom: 20px;
+      }
+
+      .grid-3x3 {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 25px;
+      }
+      .grid-card {
+        background: #fff;
+        border: 1px solid #4caf50;
+        border-radius: 20px;
+        padding: 25px;
+        display: flex;
+        align-items: center;
+        gap: 20px;
+        transition: transform 0.2s;
+        box-shadow: var(--shadow-sm);
+      }
+      .grid-icon {
+        font-size: 2rem;
+        color: #555;
+        min-width: 50px;
+        text-align: center;
+      }
+      .grid-info h4 {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: #2d3436;
+        margin: 0 0 4px 0;
+      }
+      .grid-info p {
+        font-size: 0.85rem;
+        color: #777;
+        margin: 0;
+      }
+
+      .animate {
+        animation: fadeIn 0.5s ease-out forwards;
+      }
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+          transform: translateY(10px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <aside class="sidebar">
+      <div class="logo">CampusServe<br />Canteen</div>
+      <ul class="nav-links">
+        <li><a href="2dashboard.html">Dashboard</a></li>
+        <li><a href="3order_management.html">Orders</a></li>
+        <li><a href="4menu_management.html">Menu Management</a></li>
+        <li><a href="13transaction.html">Transactions</a></li>
+        <li><a href="6users.html">Users</a></li>
+        <li><a href="5analytics.html" class="active">Analytics</a></li>
+        <li><a href="11announcement.html">Announcements</a></li>
+                <li><a href="15deals.html">Combo / Deals</a></li>
+        <li><a href="9settings.html">Settings</a></li>
+      </ul>
+    </aside>
+
+    <main class="main-content">
+      <div class="top-bar">
+        <!-- Search bar removed for performance -->
+        <div class="header-icons">
+          <div
+            class="notification"
+            onclick="window.location.href = '14notification.html'"
+          >
+            <i class="fa-solid fa-bell"></i>
+          </div>
+          <div class="menu-toggle-btn" onclick="toggleMenu()">
+            <i class="fas fa-bars"></i>
+          </div>
+        </div>
+      </div>
+
+      <!-- KPI Cards -->
+      <div class="overview-row animate">
+        <div class="kpi-card" data-metric="revenue">
+          <i class="fas fa-hand-holding-dollar kpi-icon"></i>
+          <div class="kpi-label">Total Revenue</div>
+          <div class="kpi-value-box">
+            <span class="kpi-value" id="val-revenue">₹0</span>
+          </div>
+          <div class="kpi-tabs">
+            <div class="kpi-tab active" onclick="updateTime('Today')">
+              Today
+            </div>
+            <div class="kpi-tab" onclick="updateTime('Week')">Week</div>
+            <div class="kpi-tab" onclick="updateTime('Month')">Month</div>
+          </div>
+        </div>
+        <div class="kpi-card" data-metric="orders">
+          <i class="fas fa-utensils kpi-icon"></i>
+          <div class="kpi-label">Total Orders</div>
+          <div class="kpi-value-box">
+            <span class="kpi-value" id="val-orders">0</span>
+          </div>
+          <div class="kpi-tabs">
+            <div class="kpi-tab active" onclick="updateTime('Today')">
+              Today
+            </div>
+            <div class="kpi-tab" onclick="updateTime('Week')">Week</div>
+            <div class="kpi-tab" onclick="updateTime('Month')">Month</div>
+          </div>
+        </div>
+        <div class="kpi-card" data-metric="upi">
+          <i class="fas fa-mobile-alt kpi-icon"></i>
+          <div class="kpi-label">UPI Orders</div>
+          <div class="kpi-value-box">
+            <span class="kpi-value" id="val-upi">0</span>
+          </div>
+          <div class="kpi-tabs">
+            <div class="kpi-tab active" onclick="updateTime('Today')">
+              Today
+            </div>
+            <div class="kpi-tab" onclick="updateTime('Week')">Week</div>
+            <div class="kpi-tab" onclick="updateTime('Month')">Month</div>
+          </div>
+        </div>
+        <div class="kpi-card" data-metric="cash">
+          <i class="fas fa-money-bill-wave kpi-icon"></i>
+          <div class="kpi-label">Cash Orders</div>
+          <div class="kpi-value-box">
+            <span class="kpi-value" id="val-cash">0</span>
+          </div>
+          <div class="kpi-tabs">
+            <div class="kpi-tab active" onclick="updateTime('Today')">
+              Today
+            </div>
+            <div class="kpi-tab" onclick="updateTime('Week')">Week</div>
+            <div class="kpi-tab" onclick="updateTime('Month')">Month</div>
+          </div>
+        </div>
+        <!-- Replace the last two cards with this structure -->
+        <div class="small-card">
+          <i
+            class="fas fa-exclamation-circle kpi-icon"
+            style="color: #d32f2f"
+          ></i>
+          <div class="kpi-label">Out of Stock</div>
+          <div class="small-card-inner" id="val-stock" style="color: #d32f2f">
+            0
+          </div>
+          <div style="height: 24px"></div>
+          <!-- Empty spacer to align with other cards' tabs -->
+        </div>
+
+        <div class="small-card">
+          <i class="fas fa-bolt kpi-icon" style="color: #2e7d32"></i>
+          <div class="kpi-label">Live Orders</div>
+          <div class="small-card-inner" id="val-live" style="color: #2e7d32">
+            0
+          </div>
+          <div style="height: 24px"></div>
+          <!-- Empty spacer to align with other cards' tabs -->
+        </div>
+      </div>
+
+      <!-- Charts Section -->
+      <div class="charts-row animate">
+        <div class="chart-card">
+          <div class="chart-header">Top 5 Best-Selling Items</div>
+          <div class="top-selling-list" id="best-selling-list"></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-header">Revenue Trend (Day-wise)</div>
+          <div class="chart-canvas-wrapper">
+            <canvas id="revenueChart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <div class="charts-row-2 animate">
+        <div class="chart-card">
+          <div class="chart-header">Peak Order Hours</div>
+          <div class="chart-canvas-wrapper">
+            <canvas id="peakHoursChart"></canvas>
+          </div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-header">Payment Method Share</div>
+          <div class="chart-canvas-wrapper" style="padding: 0 40px">
+            <canvas id="paymentShareChart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <div class="charts-row-full animate">
+        <div class="peak-items-card">
+          <div class="chart-header">Top sold items at peak hours</div>
+          <div class="chart-canvas-wrapper">
+            <canvas id="peakItemsDetailChart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- Matrix Section -->
+      <div class="section-title">Key Matrices</div>
+      <div class="matrix-top-row animate">
+        <div class="matrix-card">
+          <div class="chart-header">Category-wise Sales</div>
+          <div id="cat-rows-list"></div>
+        </div>
+        <div class="matrix-card">
+          <div class="best-item-container">
+            <i class="fas fa-certificate best-badge"></i>
+            <img
+              id="most-selling-img"
+              src=""
+              alt=""
+              class="best-item-img"
+              style="display: none"
+            />
+            <div class="best-name" id="most-selling-name">---</div>
+            <div class="best-desc">
+              <span
+                id="most-selling-count"
+                style="font-weight: bold; color: #000"
+                >0</span
+              >
+              sold
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3x3 Grid Cards -->
+      <div class="grid-3x3 animate">
+        <div class="grid-card">
+          <div class="grid-icon"><i class="fas fa-users"></i></div>
+          <div class="grid-info">
+            <h4 id="user-count-val">0</h4>
+            <p>Registered Users</p>
+          </div>
+        </div>
+        <div class="grid-card">
+          <div class="grid-icon"><i class="fas fa-wallet"></i></div>
+          <div class="grid-info">
+            <h4 id="refund-count-val">0</h4>
+            <p id="refund-amt-val">Amount: ₹0</p>
+          </div>
+        </div>
+        <div class="grid-card">
+          <div class="grid-icon"><i class="fas fa-bolt"></i></div>
+          <div class="grid-info">
+            <h4 id="upi-success-val">0%</h4>
+            <p>Quickest transactions</p>
+          </div>
+        </div>
+
+        <div class="grid-card">
+          <div class="grid-icon"><i class="fas fa-arrow-down"></i></div>
+          <div class="grid-info">
+            <h4 id="least-val">---</h4>
+            <p>Least Selling Item</p>
+          </div>
+        </div>
+        <div class="grid-card">
+          <div class="grid-icon"><i class="fas fa-ban"></i></div>
+          <div class="grid-info">
+            <h4 id="out-stock-val">0</h4>
+            <p>Unavailable Today</p>
+          </div>
+        </div>
+        <div class="grid-card">
+          <div class="grid-icon"><i class="fas fa-clipboard-list"></i></div>
+          <div class="grid-info">
+            <h4 id="avail-score">0 / 0</h4>
+            <p>Item Availability Score</p>
+          </div>
+        </div>
+
+        <div class="grid-card">
+          <div class="grid-icon"><i class="fas fa-comments"></i></div>
+          <div class="grid-info">
+            <h4 id="complaint-count-val">0</h4>
+            <p>Total Complaints</p>
+          </div>
+        </div>
+        <div class="grid-card">
+          <div class="grid-icon"><i class="fas fa-star-half-alt"></i></div>
+          <div class="grid-info">
+            <h4 id="rating-val">0.0</h4>
+            <p>Average Feedback</p>
+          </div>
+        </div>
+        <div class="grid-card">
+          <div class="grid-icon"><i class="fas fa-box-open"></i></div>
+          <div class="grid-info">
+            <h4 id="fulfillment-val">100%</h4>
+            <p>Order Fulfillment</p>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <aside class="right-panel" id="menuSidebar">
+      <div class="panel-close-btn" onclick="toggleMenu()">
+        <i class="fas fa-arrow-right"></i>
+      </div>
+      <div class="panel-content active">
+        <h3 style="color: #1b5e20; margin-bottom: 10px">Menu Actions</h3>
+        <a href="10feedback.html" class="panel-btn">FeedBacks</a>
+        <a href="8complains.html" class="panel-btn">Complains</a>
+      </div>
+    </aside>
+
+    <script>
+      // --- 1. CONFIG & STATE ---
+      const firebaseConfig = {
+        apiKey: "AIzaSyCD0BToDMJREYOlTSpxNihP__c4uC0tvnY",
+        authDomain: "campusserve-5f138.firebaseapp.com",
+        projectId: "campusserve-5f138",
+        storageBucket: "campusserve-5f138.firebasestorage.app",
+        messagingSenderId: "169392088588",
+        appId: "1:169392088588:web:6af9c03ce5c02fa4433029",
+      };
+      firebase.initializeApp(firebaseConfig);
+      const db = firebase.firestore();
+      const auth = firebase.auth();
+
+      let charts = {};
+      let menuLookup = {};
+      let dynamicCategories = [];
+      let currentPeriod = "Today";
+      let cachedOrders = [];
+
+      const emptyPeriod = () => ({
+        rev: 0,
+        count: 0,
+        upi: 0,
+        cash: 0,
+        refunds: 0,
+        refundAmt: 0,
+        wallet: 0,
+        upiTotal: 0,
+        upiCompleted: 0,
+        totalValid: 0,
+        completedCount: 0,
+        itemsMap: {},
+        catsMap: {},
+        hourStats: Array(24)
+          .fill(null)
+          .map(() => ({ count: 0, rev: 0, items: {} })),
+      });
+
+      let periodData = {
+        Today: emptyPeriod(),
+        Week: emptyPeriod(),
+        Month: emptyPeriod(),
+      };
+
+      // --- 2. INITIALIZATION ---
+      auth.onAuthStateChanged((user) => {
+        if (!user) window.location.href = "1login.html";
+        else loadMetadata().then(() => startOrderListener());
+      });
+
+      async function loadMetadata() {
+        const [menuSnap, catSnap] = await Promise.all([
+          db.collection("menu").get(),
+          db.collection("categories").orderBy("order").get(),
+        ]);
+
+        let outCount = 0;
+        menuSnap.forEach((doc) => {
+          const d = doc.data();
+          if (d.name)
+            menuLookup[d.name] = {
+              img: d.image_url || "",
+              cat: d.category || "General",
+              price: parseFloat(d.price || 0),
+            };
+          if (d.is_available === false) outCount++;
+        });
+
+        document.getElementById("val-stock").innerText = outCount;
+        document.getElementById("out-stock-val").innerText =
+          `${outCount} Items Today`;
+        document.getElementById("avail-score").innerText =
+          `${menuSnap.size - outCount} / ${menuSnap.size}`;
+        dynamicCategories = catSnap.docs
+          .map((doc) => doc.data().name)
+          .filter((n) => n !== "All");
+
+        db.collection("users").onSnapshot(
+          (s) =>
+            (document.getElementById("user-count-val").innerText =
+              `${s.size} Users`),
+        );
+        // Ensure this matches the collection name 'complaints'
+        db.collection("complaints").onSnapshot((snap) => {
+          document.getElementById("complaint-count-val").innerText =
+            `${snap.size} Complaints`;
+        });
+        db.collection("feedbacks").onSnapshot((s) => {
+          let total = 0;
+          s.forEach((d) => (total += parseFloat(d.data().rating || 0)));
+          document.getElementById("rating-val").innerText =
+            `${s.size > 0 ? (total / s.size).toFixed(1) : "0.0"} / 5`;
+        });
+
+        createCharts();
+      }
+
+      function startOrderListener() {
+        // FIX: Removed strict orderBy which was hiding orders missing fields
+        db.collection("orders").onSnapshot((snapshot) => {
+          cachedOrders = snapshot.docs.map((doc) => ({
+            id: doc.id,
+            ...doc.data(),
+          }));
+          processAllData();
+        });
+      }
+
+      // --- 3. PROCESSING ENGINE (High Performance) ---
+      function processAllData() {
+        periodData = {
+          Today: emptyPeriod(),
+          Week: emptyPeriod(),
+          Month: emptyPeriod(),
+        };
+        let liveOrders = 0,
+          dayRev = { Mon: 0, Tue: 0, Wed: 0, Thu: 0, Fri: 0, Sat: 0, Sun: 0 };
+        const now = new Date();
+        const todayStr = now.toISOString().split("T")[0];
+
+        cachedOrders.forEach((d) => {
+          const ts = d.orderTime || d.createdAt || d.timestamp;
+          if (!ts) return;
+          const date = ts.toDate ? ts.toDate() : new Date(ts);
+          const h = date.getHours();
+          const dStr = date.toISOString().split("T")[0];
+          const amt = parseFloat(d.totalAmount || 0);
+          const diffDays = Math.floor((now - date) / (1000 * 60 * 60 * 24));
+          const method = (d.paymentType || d.paymentMethod || "").toLowerCase();
+          const isUPI =
+            method.includes("upi") ||
+            method.includes("online") ||
+            method.includes("razorpay");
+          const isWallet = method.includes("wallet");
+
+          const periods = [];
+          if (dStr === todayStr) periods.push("Today");
+          if (diffDays <= 7) periods.push("Week");
+          if (diffDays <= 30) periods.push("Month");
+
+          periods.forEach((p) => {
+            const pObj = periodData[p];
+            if (d.status !== "Cancelled") {
+              pObj.rev += amt;
+              pObj.count++;
+              if (isUPI) {
+                pObj.upi++;
+                pObj.upiTotal++;
+                if (d.status === "Completed") pObj.upiCompleted++;
+              } else if (isWallet) {
+                pObj.wallet++; // Count Wallet orders
+              } else {
+                pObj.cash++; // Everything else is Cash
+              }
+              pObj.totalValid++;
+              if (d.status === "Completed") pObj.completedCount++;
+              pObj.hourStats[h].count++;
+              pObj.hourStats[h].rev += amt;
+
+              if (d.items)
+                d.items.forEach((i) => {
+                  const name = i.title || i.name;
+                  const qty = parseInt(i.quantity || 1);
+                  const lookup = menuLookup[name] || {
+                    cat: "General",
+                    img: "",
+                    price: 0,
+                  };
+                  if (!pObj.itemsMap[name])
+                    pObj.itemsMap[name] = {
+                      qty: 0,
+                      rev: 0,
+                      cat: lookup.cat,
+                      img: lookup.img,
+                    };
+                  pObj.itemsMap[name].qty += qty;
+                  pObj.itemsMap[name].rev += qty * (i.price || lookup.price);
+                  pObj.hourStats[h].items[name] =
+                    (pObj.hourStats[h].items[name] || 0) + qty;
+                  pObj.catsMap[lookup.cat] =
+                    (pObj.catsMap[lookup.cat] || 0) + qty;
+                });
+            } else {
+              pObj.refunds++;
+              pObj.refundAmt += amt;
+            }
+          });
+          if (diffDays <= 7 && d.status !== "Cancelled")
+            dayRev[date.toLocaleDateString("en-US", { weekday: "short" })] +=
+              amt;
+          if (["Pending Payment", "Preparing", "Ready"].includes(d.status))
+            liveOrders++;
+        });
+
+        document.getElementById("val-live").innerText = liveOrders;
+        refreshUI(dayRev);
+      }
+
+      function updateTime(period) {
+        currentPeriod = period;
+        document
+          .querySelectorAll(".kpi-tab")
+          .forEach((t) => t.classList.toggle("active", t.innerText === period));
+        processAllData();
+      }
+
+      function refreshUI(dayRev) {
+        const data = periodData[currentPeriod];
+        document.getElementById(`val-revenue`).innerText =
+          `₹${Math.round(data.rev)}`;
+        document.getElementById(`val-orders`).innerText = data.count;
+        document.getElementById(`val-upi`).innerText = data.upi;
+        document.getElementById(`val-cash`).innerText = data.cash;
+
+        // Grid Updates
+        document.getElementById("refund-count-val").innerText =
+          `${data.refunds} Refunds`;
+        document.getElementById("refund-amt-val").innerText =
+          `Amount: ₹${Math.round(data.refundAmt)}`;
+        document.getElementById("upi-success-val").innerText =
+          `${data.upiTotal > 0 ? Math.round((data.upiCompleted / data.upiTotal) * 100) : 0}% success`;
+        document.getElementById("fulfillment-val").innerText =
+          `${data.totalValid > 0 ? Math.round((data.completedCount / data.totalValid) * 100) : 100}%`;
+
+        // Best/Least Selling
+        const sorted = Object.entries(data.itemsMap).sort(
+          (a, b) => b[1].qty - a[1].qty,
+        );
+        const list = document.getElementById("best-selling-list");
+        list.innerHTML =
+          sorted
+            .slice(0, 5)
+            .map(
+              (i) => `
+        <div class="top-item">
+            <div class="item-left"><img src="${i[1].img || "https://cdn-icons-png.flaticon.com/512/706/706164.png"}" class="item-img"><div class="item-info"><h5>${i[0]}</h5><span>${i[1].cat}</span></div></div>
+            <div class="item-right"><div class="item-qty">${i[1].qty} Sold</div><div class="item-rev">₹${Math.round(i[1].rev)}</div></div>
+        </div>`,
+            )
+            .join("") ||
+          '<div style="text-align:center; padding:20px; color:#999;">No data for this period</div>';
+
+        if (sorted.length) {
+          document.getElementById("most-selling-name").innerText = sorted[0][0];
+          document.getElementById("most-selling-count").innerText =
+            sorted[0][1].qty;
+          document.getElementById("most-selling-img").src = sorted[0][1].img;
+          document.getElementById("most-selling-img").style.display =
+            sorted[0][1].img ? "block" : "none";
+          document.getElementById("least-val").innerText =
+            sorted[sorted.length - 1][0];
+        }
+
+        // Category Bars
+        const catTotal =
+          Object.values(data.catsMap).reduce((a, b) => a + b, 0) || 1;
+        document.getElementById("cat-rows-list").innerHTML = dynamicCategories
+          .map((c) => {
+            const pct = Math.round(((data.catsMap[c] || 0) / catTotal) * 100);
+            return `<div class="cat-row"><span>${c}</span><div class="cat-bar-bg"><div class="cat-bar-fill" style="width:${pct}%"></div></div><span>${pct}%</span></div>`;
+          })
+          .join("");
+
+        // Chart Updates
+        const peaks = data.hourStats
+          .map((h, i) => ({ h: i, c: h.count, r: h.rev }))
+          .sort((a, b) => b.c - a.c)
+          .slice(0, 4)
+          .sort((a, b) => a.h - b.h);
+        charts.area.data.datasets[0].data = [
+          "Mon",
+          "Tue",
+          "Wed",
+          "Thu",
+          "Fri",
+          "Sat",
+          "Sun",
+        ].map((d) => dayRev[d] || 0);
+        charts.area.update();
+        charts.peak.data.labels = peaks.map((p) => formatHour(p.h));
+        charts.peak.data.datasets[0].data = peaks.map((p) => p.c);
+        charts.peak.data.datasets[0].revs = peaks.map((p) => p.r);
+        charts.peak.update();
+        charts.pie.data.datasets[0].data = [data.upi, data.cash, data.wallet];
+        charts.pie.update();
+        renderPeakDetail(
+          peaks.map((p) => ({
+            time: formatHour(p.h),
+            items: Object.entries(data.hourStats[p.h].items)
+              .sort((a, b) => b[1] - a[1])
+              .slice(0, 3)
+              .map((it, idx) => ({
+                val: it[1],
+                lbl: it[0],
+                col: ["#007e00", "#66bb6a", "#c8e6c9"][idx],
+              })),
+          })),
+        );
+      }
+
+      function formatHour(h) {
+        return h === 0
+          ? "12 AM"
+          : h === 12
+            ? "12 PM"
+            : h > 12
+              ? h - 12 + " PM"
+              : h + " AM";
+      }
+      function toggleMenu() {
+        document.getElementById("menuSidebar").classList.toggle("open");
+      }
+
+      function createCharts() {
+        const common = {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+        };
+        charts.area = new Chart(document.getElementById("revenueChart"), {
+          type: "line",
+          data: {
+            labels: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
+            datasets: [
+              {
+                data: [],
+                borderColor: "#4caf50",
+                fill: true,
+                tension: 0.4,
+                backgroundColor: "rgba(76,175,80,0.1)",
+              },
+            ],
+          },
+          options: {
+            ...common,
+            scales: { y: { display: false }, x: { grid: { display: false } } },
+          },
+        });
+        charts.peak = new Chart(document.getElementById("peakHoursChart"), {
+          type: "bar",
+          data: {
+            labels: [],
+            datasets: [
+              {
+                data: [],
+                backgroundColor: ["#81c784", "#43a047", "#2e7d32", "#66bb6a"],
+                borderRadius: 5,
+              },
+            ],
+          },
+          options: {
+            ...common,
+            plugins: {
+              ...common.plugins,
+              tooltip: {
+                callbacks: {
+                  label: (ctx) => [
+                    `Order: ${ctx.raw}`,
+                    `Rev: ₹${Math.round(ctx.dataset.revs[ctx.dataIndex])}`,
+                  ],
+                },
+              },
+            },
+            scales: { y: { display: false }, x: { grid: { display: false } } },
+          },
+        });
+        charts.pie = new Chart(document.getElementById("paymentShareChart"), {
+          type: "doughnut",
+          data: {
+            labels: ["UPI", "Cash", "wallet"],
+            datasets: [
+              {
+                data: [0, 0, 0],
+                backgroundColor: ["#388e3c", "#a5d6a7", "#c8e6c9"],
+                borderWidth: 0,
+              },
+            ],
+          },
+          options: {
+            ...common,
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: "70%",
+            layout: { padding: { bottom: 40, top: 10, right: 10, left: 10 } },
+            plugins: {
+              legend: {
+                display: true,
+                position: "right",
+                labels: { usePointStyle: true, padding: 15 },
+              },
+            },
+          },
+        });
+      }
+
+      function renderPeakDetail(groups) {
+        const ctx = document
+          .getElementById("peakItemsDetailChart")
+          .getContext("2d");
+        let labels = [],
+          barData = [],
+          barCols = [],
+          meta = [],
+          cur = 0;
+        groups.forEach((g) => {
+          let start = cur;
+          if (!g.items.length) {
+            labels.push("No Sales");
+            barData.push(0);
+            barCols.push("#f5f5f5");
+            cur++;
+          } else
+            g.items.forEach((i) => {
+              labels.push(i.lbl);
+              barData.push(i.val);
+              barCols.push(i.col);
+              cur++;
+            });
+          meta.push({ t: g.time, s: start, e: cur - 1 });
+          labels.push("");
+          barData.push(null);
+          barCols.push("transparent");
+          cur++;
+        });
+        if (window.peakChart) window.peakChart.destroy();
+        window.peakChart = new Chart(ctx, {
+          type: "bar",
+          data: {
+            labels,
+            datasets: [
+              { data: barData, backgroundColor: barCols, borderRadius: 4 },
+            ],
+          },
+          plugins: [
+            {
+              id: "labels",
+              afterDraw: (chart) => {
+                const {
+                  ctx,
+                  scales: { x },
+                } = chart;
+                const m = chart.getDatasetMeta(0);
+                ctx.save();
+                ctx.textAlign = "center";
+                ctx.font = "600 11px Outfit";
+                ctx.fillStyle = "#636e72";
+                meta.forEach((g) => {
+                  if (m.data[g.s])
+                    ctx.fillText(
+                      g.t,
+                      (m.data[g.s].x + m.data[g.e].x) / 2,
+                      x.bottom + 35,
+                    );
+                });
+                ctx.restore();
+              },
+            },
+          ],
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            layout: { padding: { bottom: 45 } },
+            plugins: { legend: { display: false } },
+            scales: {
+              y: { display: false },
+              x: { grid: { display: false }, ticks: { font: { size: 9 } } },
+            },
+          },
+        });
+      }
+    </script>
+  </body>
+</html>

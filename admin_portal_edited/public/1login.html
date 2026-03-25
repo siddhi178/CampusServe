@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Login - Canteen Management</title>
+    
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; }
+        body { display: flex; justify-content: center; align-items: center; min-height: 100vh; background-color: #ffffff; }
+        .login-wrapper { text-align: center; width: 100%; max-width: 450px; padding: 20px; }
+        h1 { color: #007E00; font-size: 2.5rem; font-weight: bold; margin-bottom: 10px; }
+        .subtitle { color: #565656; font-size: 1rem; margin-bottom: 40px; }
+        .login-card { background-color: #e8f5e9; padding: 40px 30px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); text-align: left; }
+        .input-group { margin-bottom: 20px; }
+        label { display: block; color: #120E0E; font-weight: 500; margin-bottom: 8px; font-size: 1rem; }
+        input { width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 6px; font-size: 0.9rem; color: #333; outline: none; transition: border 0.3s; }
+        input:focus { border-color: #007E00; }
+        .btn-container { text-align: center; margin-top: 30px; display: flex;/* flex-direction: column; gap: 10px;*/ }
+        .login-btn { background-color: #c8e6c9; color: #1b5e20; border: 1px solid #81c784; padding: 10px 0; width: 100%; font-size: 1rem; font-weight: 600; border-radius: 20px; cursor: pointer; transition: all 0.3s ease; }
+        .login-btn:hover { background-color: #a5d6a7; border-color: #4caf50; }
+        /*.register-btn { background: transparent; color: #007E00; border: 1px dashed #007E00; padding: 10px 0; width: 100%; border-radius: 20px; cursor: pointer; }
+        .register-btn:hover { background: #e8f5e9; }*/
+        
+        #toast { visibility: hidden; min-width: 250px; background-color: #333; color: #fff; text-align: center; border-radius: 8px; padding: 16px; position: fixed; z-index: 1; top: 30px; left: 50%; transform: translateX(-50%); opacity: 0; transition: opacity 0.5s, top 0.5s; }
+        #toast.show { visibility: visible; opacity: 1; top: 50px; }
+        #toast.success { background-color: #2e7d32; }
+        #toast.error { background-color: #d32f2f; }
+    </style>
+</head>
+<body>
+
+    <div class="login-wrapper">
+        <h1>Admin Login</h1>
+        <p class="subtitle">Secure Access to Canteen Management</p>
+
+        <div class="login-card">
+            <div class="input-group">
+                <label for="email">Email</label>
+                <input type="email" id="email" placeholder="Admin Email">
+            </div>
+
+            <div class="input-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" placeholder="Admin Password">
+            </div>
+
+            <div class="btn-container">
+                <button class="login-btn" onclick="login()">Login</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast"></div>
+
+    <script>
+        // --- 1. FIREBASE CONFIG ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyCD0BToDMJREYOlTSpxNihP__c4uC0tvnY",
+            authDomain: "campusserve-5f138.firebaseapp.com",
+            projectId: "campusserve-5f138",
+            storageBucket: "campusserve-5f138.firebasestorage.app",
+            messagingSenderId: "169392088588",
+            appId: "1:169392088588:web:6af9c03ce5c02fa4433029"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+
+        // --- 2. LOGIN FUNCTION ---
+        function login() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            
+            if(!email || !password) { showToast("Enter email and password", "error"); return; }
+
+            auth.signInWithEmailAndPassword(email, password)
+                .then((userCredential) => {
+                    showToast("Login Successful!", "success");
+                    // Redirect to Dashboard
+                    setTimeout(() => { window.location.href = "2dashboard.html"; }, 1000);
+                })
+                .catch((error) => {
+                    console.error(error);
+                    showToast("Error: " + error.message, "error");
+                });
+        }
+
+        // --- 3. REGISTER FUNCTION (For First Time Use) ---
+        /*function register() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+
+            if(!email || !password) { showToast("Enter email and password to create", "error"); return; }
+
+            auth.createUserWithEmailAndPassword(email, password)
+                .then((userCredential) => {
+                    showToast("Admin Account Created! Logging in...", "success");
+                    setTimeout(() => { window.location.href = "2dashboard.html"; }, 1500);
+                })
+                .catch((error) => {
+                    console.error(error);
+                    showToast("Register Error: " + error.message, "error");
+                });
+        }*/
+
+        function showToast(msg, type) {
+            const t = document.getElementById("toast");
+            t.innerText = msg;
+            t.className = "show " + type;
+            setTimeout(() => { t.className = t.className.replace("show", ""); }, 3000);
+        }
+    </script>
+</body>
+</html>

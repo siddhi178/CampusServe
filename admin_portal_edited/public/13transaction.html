@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Transactions - CampusServe</title>
+    
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --bg-color: #f4f7f6;
+            --theme-dark: #1A6922;      
+            --theme-medium: #A3CCA3;    
+            --theme-light: #BEDFC8;     
+            --theme-pale: #C1E1CA;      
+            --panel-bg: #ecf7f0; 
+            --bg-white: #ffffff;
+            --text-dark: #1A6922;       
+            --text-grey: #5f6e5f;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Poppins', sans-serif; }
+        body { display: flex; height: 100vh; background-color: var(--bg-color); overflow: hidden; font-size: 14px; }
+
+      .sidebar { width: 250px; background-color: #e7f3eb; padding: 20px; display: flex; flex-direction: column; border-right: 1px solid #dcdcdc; }
+      .logo { color: #007e00; font-size: 1.5rem; font-weight: bold; margin-bottom: 40px; text-align: center; cursor: default; }
+      .nav-links { list-style: none; }
+      .nav-links li { margin-bottom: 15px; }
+      .nav-links a { text-decoration: none; color: black; font-size: 1rem; font-weight: 500; display: block; padding: 10px 15px; border-radius: 16px; transition: 0.3s; cursor: pointer; }
+      .nav-links a.active { background-color: #fff; color: #016301; font-size: 18px; font-weight: bold; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05); }
+      .nav-links a:hover { background-color: #c8e6c9; }
+
+        .main-content { flex: 1; padding: 25px 35px; display: flex; flex-direction: column; overflow-y: auto; height: 100vh; }
+        
+        header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; flex-shrink: 0; }
+        
+        .search-box { background: #fff; padding: 10px 20px; border-radius: 30px; display: flex; align-items: center; width: 350px; border: 1px solid #dce9df; box-shadow: 0 2px 5px rgba(0,0,0,0.02); transition: 0.3s; }
+        .search-box:focus-within { border-color: #a5d6a7; box-shadow: 0 4px 15px rgba(76, 175, 80, 0.1); }
+        .search-box input { border: none; background: transparent; outline: none; width: 100%; margin-left: 12px; font-size: 0.95rem; font-weight: 400; color: #444; }
+        .user-actions { display: flex; align-items: center; gap: 15px; }
+        .notification { width: 45px; height: 45px; background: #fff; border-radius: 12px; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 5px rgba(0,0,0,0.1); border: 1px solid var(--theme-medium); cursor: pointer; transition: all 0.3s ease; }
+        .notification i { color: #FFD700; -webkit-text-stroke: 1px black; font-size: 1.2rem; }
+        .notification:hover { background-color: var(--theme-light); transform: scale(1.1); }
+        .menu-toggle-btn { width: 42px; height: 42px; border-radius: 12px; background: var(--theme-pale); color: var(--theme-dark); display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 1.1rem; border: 1px solid var(--theme-medium); transition: 0.3s; }
+        .menu-toggle-btn:hover { background: var(--theme-light); transform: translateY(-2px); }
+
+        .filters-container { display: flex; justify-content: flex-end; gap: 10px; margin-bottom: 20px; flex-shrink: 0; flex-wrap: wrap; }
+        .filter-pill { border: 1px solid transparent; background: #fff; padding: 8px 20px; border-radius: 30px; cursor: pointer; font-weight: 500; color: #666; font-size: 0.9rem; transition: all 0.3s ease; box-shadow: 0 2px 8px rgba(0,0,0,0.03); }
+        .filter-pill:hover { background: #f9f9f9; transform: translateY(-1px); }
+        .filter-pill.active { background-color:#E7F3EB; color: #008100; box-shadow: 0 2px 6px rgba(46, 125, 50, 0.25); border-color: #007e007c; font-weight: 600; }
+
+        .table-container { background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.03); border: 1px solid #e0e0e0; margin-top: 20px; flex-shrink: 0; }
+        
+        .table-header { display: grid; grid-template-columns: 40px 100px 1.5fr 2fr 100px 100px 120px 100px 80px; gap: 10px; background-color: #C8E6C9; padding: 15px 20px; font-weight: 600; color: #1B5E20; font-size: 0.9rem; }
+        .table-row { display: grid; grid-template-columns: 40px 100px 1.5fr 2fr 100px 100px 120px 100px 80px; gap: 10px; padding: 15px 20px; align-items: center; }
+        .table-row:hover { background-color: #f9f9f9; }
+        
+        .user-name-text { font-weight: 700; color: #000; font-size: 1rem; }
+        .contact-text { font-size: 0.8rem; color: #666; display: block; }
+
+        .badge { padding: 4px 8px; border-radius: 6px; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; display: flex; align-items: center; justify-content: center; text-align: center; min-height: 32px; line-height: 1.2; width: 110px; word-break: break-word; }
+        .bg-success { background: #e8f5e9; color: #2e7d32; border: 1px solid #c8e6c9; }
+        .bg-failed { background: #ffebee; color: #c62828; border: 1px solid #ffcdd2; }
+        .bg-refunded { background: #f3e5f5; color: #7b1fa2; border: 1px solid #e1bee7; }
+        .bg-pending { background: #fff3e0; color: #ef6c00; border: 1px solid #ffe0b2; }
+
+        .action-group { display: flex; gap: 8px; justify-content: center; }
+        .btn-icon { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.2s; border: 1px solid #ddd; background: white; color: #555; }
+        .btn-icon:hover { background: #eee; color: #000; }
+
+        .right-panel { position: fixed; top: 0; right: -500px; width: 450px; height: 100vh; background: #fff; z-index: 4000; transition: 0.4s cubic-bezier(0.25, 0.8, 0.25, 1); box-shadow: -5px 0 20px rgba(0,0,0,0.1); border-left: 5px solid var(--theme-dark); overflow-y: auto; }
+        .right-panel.open { right: 0; }
+
+        .section-title { font-size: 1rem; font-weight: 700; color: #333; margin: 25px 0 10px 0; border-bottom: 2px solid #e0e0e0; padding-bottom: 5px; }
+        .item-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px dashed #eee; font-size: 0.95rem; }
+        
+        .timeline { margin-top: 15px; position: relative; padding-left: 5px; }
+        .tl-item { border-left: 2px solid #e0e0e0; position: relative; padding-left: 30px; padding-bottom: 25px; }
+        .tl-item:last-child { border-left: 2px solid transparent; }
+        .tl-dot { position: absolute; left: -8px; top: 0; width: 14px; height: 14px; border-radius: 50%; background: #ccc; border: 2px solid #fff; box-shadow: 0 0 0 1px #ccc; z-index: 2; }
+
+        .tl-item.active { border-left-color: #4caf50; }
+        .tl-item.active .tl-dot { background: #4caf50; box-shadow: 0 0 0 3px #e8f5e9; }
+        .tl-item.active strong { color: #2e7d32; }
+
+        .tl-item.ongoing .tl-dot { background: #2196F3; box-shadow: 0 0 0 3px #e3f2fd; animation: pulseBlue 2s infinite; }
+        .tl-item.ongoing strong { color: #1976D2; }
+
+        .tl-item.warn .tl-dot { background: #ff9800; box-shadow: 0 0 0 3px #fff3e0; }
+        .tl-item.warn strong { color: #e65100; }
+
+        .tl-time { font-size: 0.75rem; color: #888; display: block; margin-top: 3px; }
+
+        .detail-row { display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 0.9rem; }
+        .detail-label { color: #666; }
+        .detail-value { font-weight: 600; color: #333; }
+
+        #pdfModal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 5000; justify-content: center; align-items: center; }
+        #pdfModal.show { display: flex; }
+        .pdf-box { background: #fff; width: 90%; max-width: 800px; height: 90vh; border-radius: 15px; display: flex; flex-direction: column; padding: 20px; position: relative; }
+
+        .right-panell { position: fixed; top: 0; right: -460px; width: 320px; height: 100vh; background-color: var(--panel-bg); z-index: 2000; box-shadow: -5px 0 15px rgba(0, 0, 0, 0.1); transition: right 0.4s cubic-bezier(0.25, 0.8, 0.25, 1); display: flex; flex-direction: column; overflow-y: auto; }
+        .right-panell.open { right: 0; }
+        .panell-content { display: none; flex-direction: column; padding: 80px 20px 20px 20px; gap: 15px; width: 100%; }
+        .panell-content.active { display: flex; }
+        .panell-btn { background-color: #ffffff; border: 2px solid #e0e0e0; color: #2e7d32; padding: 12px 20px; border-radius: 30px; font-weight: 600; font-size: 0.9rem; text-align: left; cursor: pointer; transition: 0.2s; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05); text-decoration: none; display: block; }
+        .panell-btn:hover { border-color: #4caf50; color: #1b5e20; transform: translateX(5px); }
+        .panell-close-btn { position: absolute; top: 25px; left: 20px; width: 40px; height: 40px; border: 2px solid #1b5e20; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #1b5e20; font-size: 20px; cursor: pointer; z-index: 1100; transition: background-color 0.2s; }
+        .panell-close-btn:hover { background-color: #c8e6c9; }
+    </style>
+</head>
+<body>
+    <aside class="right-panell" id="menuSidebar">
+        <div class="panell-close-btn" onclick="toggleMenu()">
+            <i class="fas fa-arrow-right"></i>
+        </div>
+        <div class="panell-content active">
+            <h3 style="color:#1b5e20; margin-bottom:5px; font-size: 1.1rem; font-weight: 700;">Menu Actions</h3>
+            <a href="10feedback.html" class="panell-btn">FeedBacks</a>
+            <a href="8complains.html" class="panell-btn">Complains</a>
+        </div>
+    </aside>
+
+    <aside class="sidebar">
+      <div class="logo">CampusServe<br />Canteen</div>
+      <ul class="nav-links">
+        <li><a href="2dashboard.html">Dashboard</a></li>
+        <li><a href="3order_management.html">Orders</a></li>
+        <li><a href="4menu_management.html">Menu Management</a></li>
+        <li><a href="13transaction.html" class="active">Transactions</a></li>
+        <li><a href="6users.html">Users</a></li>
+        <li><a href="5analytics.html">Analytics</a></li>
+        <li><a href="11announcement.html">Announcements</a></li>
+                <li><a href="15deals.html">Combo / Deals</a></li>
+        <li><a href="9settings.html">Settings</a></li>
+      </ul>
+    </aside>
+
+    <main class="main-content">
+        <header>
+        <div class="search-container">
+          <div class="search-box">
+            <i class="fas fa-search" style="color: #aaa"></i>
+            <input type="text" id="mainSearch" placeholder="Search by Token ID, User Name..." onkeyup="filterTable()"/>
+          </div>
+        </div>
+        <div class="user-actions">
+            <div class="notification" onclick="window.location.href='14notification.html'"><i class="fa-solid fa-bell"></i></div>
+            <div class="menu-toggle-btn" onclick="toggleMenu()"><i class="fas fa-bars"></i></div>
+        </div>
+      </header>
+
+        <div class="filters-container">
+            <button class="filter-pill active" onclick="applyFilter('All')">All</button>
+            <button class="filter-pill" onclick="applyFilter('Paid')">Paid</button>
+            <button class="filter-pill" onclick="applyFilter('Pending')">Pending</button>
+            <button class="filter-pill" onclick="applyFilter('Refunded')">Refunded</button>
+        </div>
+
+        <div class="table-container">
+            <div class="table-header">
+                <div>#</div>
+                <div>Token Number</div>
+                <div>User Name</div>
+                <div>Contact</div>
+                <div>Amount</div>
+                <div>Method</div>
+                <div style="text-align: left;">Status</div>
+                <div>Date</div>
+                <div style="text-align:center;">Action</div>
+            </div>
+            <div id="tableBody">
+                <div style="padding:40px; text-align:center; color:#999;">Loading Data...</div>
+            </div>
+        </div>
+    </main>
+
+    <aside class="right-panel" id="detailPanel">
+    <div class="panel-header" style="padding: 20px; background: #E7F3EB; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #ddd;">
+        <h3 style="color: var(--theme-dark); margin: 0;">Transaction Details</h3>
+        <div class="btn-icon" onclick="closePanel()"><i class="fas fa-times"></i></div>
+    </div>
+    <div class="panel-content" id="panelContent" style="display: block; padding: 25px;">
+    </div>
+</aside>
+
+<script>
+    const firebaseConfig = {
+        apiKey: "AIzaSyCD0BToDMJREYOlTSpxNihP__c4uC0tvnY",
+        projectId: "campusserve-5f138",
+        appId: "1:169392088588:web:6af9c03ce5c02fa4433029"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+document.addEventListener('click', () => {
+    const audio = new Audio(); 
+    audio.play().catch(() => {}); 
+}, { once: true });
+
+let lastOrderCount = -1;
+let lastNotifCount = -1;
+let isInitialOrderLoad = true;
+let isInitialNotifLoad = true;
+
+function playNotificationSound() {
+    const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
+    audio.play().catch(e => console.log("Sound blocked. Click page once."));
+}
+
+db.collection('orders').onSnapshot(snap => {
+    const currentOrderCount = snap.docs.length;
+    if (!isInitialOrderLoad && currentOrderCount > lastOrderCount) {
+        playNotificationSound();
+        fetchData(); 
+    }
+    lastOrderCount = currentOrderCount;
+    isInitialOrderLoad = false;
+});
+
+db.collection('notifications').onSnapshot(snap => {
+    const currentNotifCount = snap.docs.length;
+    if (!isInitialNotifLoad && currentNotifCount > lastNotifCount) {
+        playNotificationSound();
+    }
+    lastNotifCount = currentNotifCount;
+    isInitialNotifLoad = false;
+});
+
+    let allData = [];
+    let currentFilter = 'All';
+
+    function cleanID(id) { return String(id || "").replace("txn_", "").replace("ORDER_", "").trim(); }
+
+    async function fetchData() {
+        try {
+            document.getElementById('tableBody').innerHTML = '<div style="padding:40px; text-align:center; color:#999;"><i class="fas fa-spinner fa-spin"></i> Syncing Ledgers...</div>';
+            const [txnSnap, userSnap, orderSnap] = await Promise.all([
+                db.collection("transactions").get(),
+                db.collection("users").get(),
+                db.collection("orders").get()
+            ]);
+
+            const usersMap = {};
+            userSnap.forEach(doc => { usersMap[doc.id] = doc.data(); });
+
+            const txnsLookup = new Map();
+            txnSnap.forEach(doc => {
+                const d = doc.data();
+                txnsLookup.set(cleanID(doc.id), { ...d, docId: doc.id });
+                if (d.orderId) txnsLookup.set(cleanID(d.orderId), { ...d, docId: doc.id });
+            });
+
+            const mergedResults = [];
+
+            orderSnap.forEach(doc => {
+                const order = doc.data();
+                const orderDocId = doc.id;
+                const txn = txnsLookup.get(cleanID(orderDocId)) || txnsLookup.get(cleanID(order.txnId));
+                const uid = order.userId || (txn ? txn.userId : null);
+                const user = (uid && usersMap[uid]) ? usersMap[uid] : { name: order.userName || "Guest" };
+
+                let rawT = order.tokenNumber || "";
+                let displayToken = "-";
+                if (rawT) {
+                    let tStr = String(rawT).toUpperCase().trim();
+                    displayToken = tStr.startsWith('T-') ? tStr : "T-" + tStr.padStart(2, '0');
+                }
+
+                let method = (txn ? txn.method : (order.paymentMethod || order.paymentType)) || "Cash";
+                if (method.toLowerCase().includes("counter")) method = "Cash";
+
+                let rawStatus = (order.status || (txn ? txn.status : "Pending")).toUpperCase();
+                let pillStatus = "Paid";
+                if (['PENDING', 'PENDING PAYMENT'].includes(rawStatus)) pillStatus = 'Pending';
+                else if (rawStatus.includes('REFUND') || rawStatus.includes('CANCEL') || rawStatus.includes('FAIL')) pillStatus = 'Refunded';
+
+                mergedResults.push({
+                    id: txn ? txn.docId : orderDocId,
+                    userName: user.name || "Guest",
+                    userEmail: user.email || order.userEmail || "",
+                    userPhone: user.phone || order.userPhone || "",
+                    amount: parseFloat(order.totalAmount || (txn ? txn.amount : 0)) || 0,
+                    method: method,
+                    displayStatus: pillStatus,
+                    actualStatus: rawStatus,
+                    timestamp: order.timestamp || (txn ? txn.timestamp : null),
+                    token: displayToken,
+                    linkedOrder: { ...order, _docId: orderDocId },
+                    userConfirmedReceipt: txn ? txn.userConfirmedReceipt : (order.refundVerified || false)
+                });
+            });
+
+            const now = new Date();
+            allData = mergedResults.filter(item => {
+                if (!item.timestamp) return false;
+                const d = item.timestamp.toDate ? item.timestamp.toDate() : new Date(item.timestamp.seconds * 1000);
+                return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+            }).sort((a, b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0));
+
+            renderTable();
+        } catch (e) { document.getElementById('tableBody').innerHTML = "Error loading data."; }
+    }
+
+    function renderTable() {
+        const tbody = document.getElementById('tableBody');
+        const term = document.getElementById('mainSearch').value.toLowerCase();
+        tbody.innerHTML = "";
+
+        const filtered = allData.filter(item => {
+            if (currentFilter !== 'All' && item.displayStatus !== currentFilter) return false;
+            const matchesSearch = item.userName.toLowerCase().includes(term) || item.token.toLowerCase().includes(term);
+            if (!matchesSearch) return false;
+            return true;
+        });
+
+        filtered.forEach((item, i) => {
+            let label = "PAID", bClass = "bg-success";
+            if (item.displayStatus === 'Pending') { label = "PENDING"; bClass = "bg-pending"; }
+            else if (item.displayStatus === 'Refunded') {
+                if (item.actualStatus.includes('DISPUTE')) { label = "DISPUTED"; bClass = "bg-failed"; }
+                else { label = "REFUNDED"; bClass = "bg-refunded"; }
+            }
+
+            const isMinus = item.displayStatus === 'Refunded';
+            let color = isMinus ? '#d32f2f' : (label === 'PENDING' ? '#ef6c00' : '#2e7d32');
+
+            tbody.innerHTML += `
+            <div class="table-row">
+                <div>${i + 1}</div>
+                <div style="font-weight: 800; color: #1b5e20; font-size: 1.1rem;">${item.token}</div>
+                <div class="user-name-text">${item.userName}</div>
+                <div><span class="contact-text">${item.userEmail}</span><span class="contact-text">${item.userPhone}</span></div>
+                <div style="font-weight:700; color:${color}">${isMinus ? '-' : '+'} ₹${item.amount.toFixed(2)}</div>
+                <div>${item.method}</div>
+                <div style="display: flex; justify-content: center;"><span class="badge ${bClass}">${label}</span></div>
+                <div>${item.timestamp ? new Date(item.timestamp.seconds * 1000).toLocaleDateString() : '-'}</div>
+                <div class="action-group">
+                    <div class="btn-icon" onclick="openPanel('${item.id}')"><i class="fas fa-eye"></i></div>
+                    <div class="btn-icon" onclick="generatePDF('${item.id}')" style="color:#d32f2f;"><i class="fas fa-file-pdf"></i></div>
+                </div>
+            </div>`;
+        });
+    }
+
+function openPanel(id) {
+    const item = allData.find(d => d.id === id);
+    if (!item) return;
+
+    document.getElementById('detailPanel').classList.add('open');
+    const content = document.getElementById('panelContent');
+    const order = item.linkedOrder;
+    const status = (item.actualStatus || "").toUpperCase();
+    const method = item.method.toLowerCase();
+    
+    const isRefundConfirmed = item.userConfirmedReceipt || order?.refundVerified;
+
+    const timeStr = item.timestamp ? new Date(item.timestamp.seconds * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'N/A';
+
+    let html = `
+        <div style="background:#f9f9f9; padding:20px; border-radius:15px; border:1px solid #eee; margin-bottom:25px;">
+            <h2 style="margin:0 0 5px 0; color:var(--theme-dark);">${item.userName}</h2>
+            <p style="margin:0; color:#666; font-size:0.9rem;">${item.userEmail} | ${item.userPhone}</p>
+            <hr style="margin:15px 0; border:0; border-top:1px dashed #ccc;">
+            <div class="detail-row"><span class="detail-label">Order ID:</span> <span class="detail-value" style="font-family:monospace;">${item.id.replace('virt_', '')}</span></div>
+            <div class="detail-row"><span class="detail-label">Token:</span> <span class="detail-value" style="color:#007E00; font-weight:800; font-size:1.1rem;">${item.token}</span></div>
+            <div class="detail-row"><span class="detail-label">Payment:</span> <span class="detail-value">${item.method}</span></div>
+            <div class="detail-row"><span class="detail-label">Time:</span> <span class="detail-value">${timeStr}</span></div>
+            <div class="detail-row" style="margin-top:10px; font-size:1.1rem;"><span class="detail-label">Total Amount:</span> <span class="detail-value" style="color:#2e7d32;">₹${item.amount.toFixed(2)}</span></div>
+        </div>
+    `;
+
+    html += `<div class="section-title">Order Details</div>`;
+    if (order && order.items) {
+        order.items.forEach(f => {
+            const p = parseFloat(String(f.price).replace('₹', '')) || (item.amount / order.items.length);
+            html += `<div class="item-row"><span>${f.quantity}x ${f.name || f.title}</span><span>₹${(p * f.quantity).toFixed(2)}</span></div>`;
+        });
+    } else {
+        html += `<p style="color:#999; font-style:italic;">No specific items found for this transaction.</p>`;
+    }
+
+    html += `<div class="section-title">Timeline</div><div class="timeline">`;
+
+    const reschHistory = order.rescheduleHistory || [];
+    const extHistory = order.extensionHistory || [];
+    const activityLogs = order.activityLogs || [];
+
+    const isCancelFlow = status.includes('CANCEL') || status.includes('REFUND') || status.includes('DISPUTE');
+
+    if (!isCancelFlow) {
+        let p1 = "active", p2 = "active", p3 = "", p4 = "";
+        if (method === 'cash') {
+            p2 = (status === 'PENDING' || status === 'PENDING PAYMENT') ? "ongoing" : "active";
+        }
+        
+        if (['PREPARING', 'WAIT EXTENDED', 'DELAYED'].includes(status)) p3 = "ongoing";
+        if (status === 'READY') { p3 = "active"; p4 = "ongoing"; }
+        if (status === 'COMPLETED' || status === 'SUCCESS' || status === 'PICKED UP') { p3 = "active"; p4 = "active"; }
+
+        html += `<div class="tl-item ${p1}"><div class="tl-dot"></div><strong>Order Paid</strong></div>`;
+        html += `<div class="tl-item ${p2}"><div class="tl-dot"></div><strong>Order Placed</strong></div>`;
+        
+        reschHistory.forEach(r => { html += `<div class="tl-item active"><div class="tl-dot"></div><strong>Rescheduled:</strong> <span class="tl-time">${r}</span></div>`; });
+        extHistory.forEach(e => { html += `<div class="tl-item active"><div class="tl-dot"></div><strong>Time Extended:</strong> <span class="tl-time">${e}</span></div>`; });
+        activityLogs.forEach(l => { html += `<div class="tl-item warn"><div class="tl-dot"></div><strong>Activity:</strong> <span class="tl-time">${l}</span></div>`; });
+
+        html += `<div class="tl-item ${p3}"><div class="tl-dot"></div><strong>Preparing</strong></div>`;
+        html += `<div class="tl-item ${p4}"><div class="tl-dot"></div><strong>Completed</strong></div>`;
+
+    } else {
+        let c4 = isRefundConfirmed ? "active" : "ongoing";
+        let c5 = isRefundConfirmed ? "active" : "";
+
+        html += `<div class="tl-item active"><div class="tl-dot"></div><strong>Order Paid</strong></div>`;
+        html += `<div class="tl-item active"><div class="tl-dot"></div><strong>Order Placed</strong></div>`;
+        
+        reschHistory.forEach(r => { html += `<div class="tl-item active"><div class="tl-dot"></div><strong>Rescheduled:</strong> <span class="tl-time">${r}</span></div>`; });
+        extHistory.forEach(e => { html += `<div class="tl-item active"><div class="tl-dot"></div><strong>Time Extended:</strong> <span class="tl-time">${e}</span></div>`; });
+        activityLogs.forEach(l => { html += `<div class="tl-item warn"><div class="tl-dot"></div><strong>Activity:</strong> <span class="tl-time">${l}</span></div>`; });
+
+        html += `<div class="tl-item active"><div class="tl-dot"></div><strong>Preparing</strong></div>`;
+        html += `<div class="tl-item ${c4}"><div class="tl-dot"></div><strong style="color:red">Cancelled / Refund Req</strong><span class="tl-time">${status}</span></div>`;
+        
+        if (isRefundConfirmed) {
+            html += `<div class="tl-item active"><div class="tl-dot"></div><strong>Refund Verified</strong></div>`;
+        }
+    }
+
+    html += `</div>`;
+    content.innerHTML = html;
+}
+
+function generatePDF(id) {
+        const item = allData.find(d => d.id === id);
+        if (!item) return;
+
+        const order = item.linkedOrder || {};
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        
+        // Data Prep
+        const token = item.token || '--';
+        const orderId = order.orderId || item.id.replace('virt_', '');
+        const paymentMethod = item.method || 'Online';
+        const totalAmount = parseFloat(item.amount || 0).toFixed(0);
+        
+        const rawStatus = (item.actualStatus || "Completed").toUpperCase();
+        const isRefunded = rawStatus.includes('CANCELLED') || rawStatus.includes('REFUND') || rawStatus.includes('DISPUTE');
+        const displayStatus = rawStatus;
+
+        const dateStr = item.timestamp ? new Date(item.timestamp.seconds * 1000).toLocaleString([], { year: 'numeric', month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : 'Unknown Date';
+        const actLogs = order.activityLogs || [];
+
+        // 1. Watermark (Drawn first so it stays in background)
+        if (isRefunded) {
+            doc.setTextColor(255, 205, 210); // Very light red (similar to shade(100))
+            doc.setFontSize(90);
+            const wText = rawStatus.includes('CANCELLED') ? "CANCELLED" : "REFUNDED";
+            
+            // Save graphics state, rotate, draw, restore
+            doc.saveGraphicsState();
+            doc.setGState(new doc.GState({opacity: 0.5}));
+            // Rotate around the center of the page
+            doc.text(wText, 30, 200, { angle: 45 });
+            doc.restoreGraphicsState();
+        }
+
+        // 2. Header
+        doc.setFontSize(24); 
+        doc.setTextColor(26, 105, 34); // Green 800
+        doc.setFont("helvetica", "bold");
+        doc.text("CampusServe Canteen", 15, 25);
+        
+        doc.setFontSize(14); 
+        doc.setTextColor(97, 97, 97); // Grey 700
+        doc.setFont("helvetica", "normal");
+        doc.text("Official Order Receipt", 15, 32);
+
+        // Token Box (Simulated with drawn rectangle)
+        doc.setFillColor(232, 245, 233); // Green 50
+        doc.roundedRect(150, 18, 45, 15, 2, 2, 'F');
+        doc.setFontSize(20);
+        doc.setTextColor(26, 94, 32); // Green 900
+        doc.setFont("helvetica", "bold");
+        doc.text(`Token: ${token}`, 155, 29);
+
+        // 3. Order Details
+        doc.setFontSize(12);
+        doc.setTextColor(0, 0, 0);
+        doc.setFont("helvetica", "normal");
+        doc.text(`Order ID: ${orderId}`, 15, 50);
+        doc.text(`Date: ${dateStr}`, 15, 57);
+        doc.text(`Payment Method: ${paymentMethod}`, 15, 64);
+
+        doc.setFontSize(10);
+        doc.setTextColor(117, 117, 117);
+        doc.text("Order Status:", 150, 50);
+        
+        doc.setFontSize(16);
+        doc.setFont("helvetica", "bold");
+        if (isRefunded) { doc.setTextColor(198, 40, 40); } // Red 800
+        else { doc.setTextColor(46, 125, 50); } // Green 800
+        doc.text(displayStatus, 150, 57);
+
+        // 4. Line Divider
+        doc.setDrawColor(189, 189, 189);
+        doc.setLineWidth(0.5);
+        doc.line(15, 70, 195, 70);
+
+        // 5. Table
+        const rows = [];
+        if (order.items && order.items.length > 0) {
+            order.items.forEach(i => {
+                let p = parseFloat(String(i.price).replace('₹', '').trim()) || 0;
+                let sub = p * (i.quantity || 1);
+                rows.push([
+                    i.name || i.title || "Item", 
+                    `x${i.quantity || 1}`, 
+                    `Rs ${p.toFixed(0)}`, 
+                    `Rs ${sub.toFixed(0)}`
+                ]);
+            });
+        } else {
+            rows.push(["Bulk Order Payment", "x1", `Rs ${totalAmount}`, `Rs ${totalAmount}`]);
+        }
+
+        doc.autoTable({ 
+            startY: 75, 
+            head: [['Item', 'Qty', 'Price', 'Subtotal']], 
+            body: rows, 
+            headStyles: { fillColor: [255, 255, 255], textColor: [0, 0, 0], fontStyle: 'bold', fontSize: 11 },
+            bodyStyles: { fontSize: 11 },
+            columnStyles: {
+                0: { cellWidth: 80 },
+                1: { halign: 'center', cellWidth: 30 },
+                2: { halign: 'right', cellWidth: 35 },
+                3: { halign: 'right', fontStyle: 'bold', cellWidth: 35 }
+            },
+            theme: 'plain' // Removes default borders to match flutter UI
+        });
+
+        const finalY = doc.lastAutoTable.finalY;
+
+        // Divider
+        doc.setDrawColor(189, 189, 189);
+        doc.setLineWidth(0.5);
+        doc.line(15, finalY + 5, 195, finalY + 5);
+
+        // 6. Grand Total
+        doc.setFontSize(16);
+        doc.setTextColor(0, 0, 0);
+        doc.setFont("helvetica", "bold");
+        doc.text("Grand Total", 15, finalY + 15);
+
+        doc.setFontSize(18);
+        doc.setTextColor(46, 125, 50); // Green 800
+        doc.text(`Rs ${totalAmount}`, 195, finalY + 15, { align: 'right' });
+
+        // 7. Timeline / Logs
+        if (actLogs.length > 0 || isRefunded) {
+            let logY = finalY + 35;
+            doc.setFontSize(12);
+            doc.setTextColor(97, 97, 97); // Grey 700
+            doc.text("Action History:", 15, logY);
+            
+            doc.setFontSize(10);
+            doc.setFont("helvetica", "normal");
+            
+            if (isRefunded) {
+                logY += 7;
+                doc.setTextColor(211, 47, 47); // Red 700
+                doc.setFont("helvetica", "bold");
+                doc.text(`- System Status: ${displayStatus}`, 15, logY);
+                doc.setFont("helvetica", "normal");
+                doc.setTextColor(117, 117, 117);
+            }
+
+            actLogs.forEach(log => {
+                logY += 6;
+                // Auto wrap text if log is too long
+                const splitLog = doc.splitTextToSize(`- ${log}`, 170);
+                doc.text(splitLog, 15, logY);
+                logY += (splitLog.length - 1) * 5; 
+            });
+        }
+
+        document.getElementById('pdfPreviewFrame').src = doc.output('bloburl');
+        document.getElementById('downloadPdfBtn').onclick = () => doc.save(`Invoice_${token}_${orderId}.pdf`);
+        document.getElementById('pdfModal').classList.add('show');
+    }
+
+function closePdfModal() { document.getElementById('pdfModal').classList.remove('show'); }
+function closePanel() { document.getElementById('detailPanel').classList.remove('open'); }
+function applyFilter(f) { currentFilter = f; document.querySelectorAll('.filter-pill').forEach(b => b.classList.remove('active')); event.target.classList.add('active'); renderTable(); }
+function filterTable() { renderTable(); }
+
+fetchData();
+</script>
+
+<div id="pdfModal">
+    <div class="pdf-box">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+            <h3 style="color:var(--theme-dark)">Invoice Preview</h3>
+            <button class="btn-icon" onclick="closePdfModal()"><i class="fas fa-times"></i></button>
+        </div>
+        <iframe id="pdfPreviewFrame" style="flex:1; border:1px solid #ddd; border-radius:8px;"></iframe>
+        <div style="margin-top:15px; display:flex; gap:10px; justify-content:flex-end;">
+            <button class="btn-update" id="downloadPdfBtn" style="padding:10px 25px;">Download PDF</button>
+            <button class="btn-cancel-modal" onclick="closePdfModal()" style="padding:10px 25px; border:1px solid #ccc;">Close</button>
+        </div>
+    </div>
+</div>
+</body>
+</html>

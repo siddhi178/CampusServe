@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CampusServe - Welcome</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* --- Elegant Pastel Theme --- */
+        :root {
+            --bg-color: #F7F9F8; 
+            --card-bg: #FFFFFF;
+            --text-dark: #1A3018; 
+            --text-grey: #7A8B7A; 
+            
+            --btn-primary: #4fa8557d; 
+            --btn-border: #E0E6E0;
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: var(--bg-color);
+            box-sizing: border-box;
+
+            /* --- ANTI-BLINKING CURSOR FIX --- */
+            caret-color: transparent; 
+            user-select: none; 
+            -webkit-user-select: none; 
+            -webkit-tap-highlight-color: transparent; 
+        }
+
+        /* --- Elegant Floating Card --- */
+        .card {
+            background: var(--card-bg);
+            padding: 45px 35px;
+            border-radius: 24px;
+            /* Soft, luxurious shadow */
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.04), 0 5px 15px rgba(0, 0, 0, 0.02);
+            width: 100%;
+            max-width: 360px; 
+            text-align: center;
+            border: 1px solid rgba(255, 255, 255, 0.8);
+        }
+
+        /* --- ANIMATED LOGO --- */
+        @keyframes floatUpDown {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-8px); } 
+            100% { transform: translateY(0px); }
+        }
+
+        .logo-img {
+            width: 260px;
+            height: 160px;
+            object-fit: contain;
+            margin: 0 auto 3px auto;
+            display: block;
+            user-select: none; 
+            animation: floatUpDown 4s ease-in-out infinite;
+        }
+
+        /* --- Typography --- */
+        .logo-text {
+            color: var(--text-dark);
+            margin: 0 0 8px 0;
+            font-size: 26px;
+            font-weight: 700;
+            letter-spacing: -0.3px;
+        }
+        
+        .description {
+            color: var(--text-grey);
+            margin: 0 0 35px 0;
+            font-size: 15px;
+            font-weight: 400;
+            line-height: 1.5;
+        }
+        
+        /* --- Refined Buttons --- */
+        .btn-group {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            padding: 15px 20px;
+            border-radius: 12px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 15px;
+            letter-spacing: 0.2px;
+            transition: all 0.3s ease;
+            box-sizing: border-box;
+            cursor: pointer;
+        }
+        
+        /* 1. Primary: Download APK */
+        .btn-primary {
+            background-color: var(--btn-primary);
+            color: rgb(0, 0, 0);
+            box-shadow: 0 4px 15px rgba(27, 94, 32, 0.15);
+        }
+        .btn-primary:hover { 
+            background-color: #61b867; 
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(27, 94, 32, 0.25);
+        }
+
+        /* 2. Secondary: Web Browser */
+        .btn-outline {
+            background-color: white;
+            color: var(--text-dark);
+            border: 2px solid var(--btn-border);
+        }
+        .btn-outline:hover { 
+            background-color: #F9FAF9; 
+            border-color: #C8D1C8;
+            transform: translateY(-2px); 
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="card">
+        <img src="assests/category/logo.png" alt="CampusServe Logo" class="logo-img" onerror="this.style.display='none'">
+        
+        <h1 class="logo-text">CampusServe</h1>
+        <p class="description">Welcome! Select your preferred way to order.</p>
+
+        <div class="btn-group">
+            <a href="CampusServe.apk" download="CampusServe.apk" class="btn btn-primary">
+                Download App File (.apk)
+            </a>
+
+            <a href="index.html" class="btn btn-outline">
+                Continue in Web Browser
+            </a>
+        </div>
+    </div>
+
+</body>
+</html>

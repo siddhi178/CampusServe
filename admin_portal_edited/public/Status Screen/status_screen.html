@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Order Status - CampusServe</title>
+    
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        /* --- GLOBAL VARIABLES --- */
+        :root {
+            --bg-body: #F4F6F8;
+            --primary-green: #2E7D32;
+            --ready-bg: #C8E6C9;      
+            --ready-border: #4CAF50;  
+            --ready-text: #1B5E20;
+            --prep-bg: #FFF9C4;       
+            --prep-border: #FFC107;   
+            --prep-text: #F57F17;     
+            --header-bg: #ffffff;
+            --shadow: 0 4px 6px rgba(0,0,0,0.05);
+        }
+
+        /* --- RESET --- */
+        * { 
+            margin: 0; padding: 0; box-sizing: border-box; font-family: 'Poppins', sans-serif; 
+            -webkit-user-select: none; user-select: none; cursor: default;
+        }
+        
+        body { 
+            background-color: var(--bg-body); 
+            height: 100vh; 
+            display: flex; 
+            flex-direction: column; 
+            overflow: hidden;
+        }
+
+        /* --- TOP BAR --- */
+        .top-bar {
+            background-color: var(--header-bg);
+            padding: 15px 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            z-index: 10;
+            border-bottom: 2px solid #E0E0E0;
+        }
+        .logo { font-size: 1.8rem; font-weight: 800; color: var(--primary-green); letter-spacing: -0.5px; }
+        .clock { font-size: 2rem; font-weight: 600; color: #333; background: #E8F5E9; padding: 5px 20px; border-radius: 12px; }
+
+        /* --- MAIN LAYOUT --- */
+        .status-board {
+            display: flex;
+            flex: 1;
+            padding: 30px;
+            gap: 40px;
+            height: 100%;
+            overflow: hidden;
+        }
+
+        .column {
+            flex: 1;
+            background: #fff;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            border: 1px solid #e0e0e0;
+        }
+
+        .col-header {
+            padding: 20px;
+            text-align: center;
+            font-size: 2rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+        
+        .col-preparing .col-header { background-color: #FFFDE7; color: #FBC02D; border-bottom: 4px solid #FBC02D; }
+        .col-ready .col-header { background-color: #E8F5E9; color: #2E7D32; border-bottom: 4px solid #2E7D32; }
+
+        .token-grid {
+            padding: 30px;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 20px;
+            overflow-y: auto;
+            align-content: start;
+            flex: 1;
+        }
+
+        .token-card {
+            font-size: 2.5rem;
+            font-weight: 800;
+            text-align: center;
+            padding: 20px 0;
+            border-radius: 16px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+            animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+
+        @keyframes popIn { from { opacity: 0; transform: scale(0.5); } to { opacity: 1; transform: scale(1); } }
+
+        .token-card.prep { background-color: var(--prep-bg); color: var(--prep-text); border: 3px solid var(--prep-border); }
+        .token-card.ready {
+            background-color: var(--ready-bg); color: var(--ready-text); border: 3px solid var(--ready-border);
+            animation: popIn 0.4s forwards, pulseGreen 2s infinite 0.5s;
+        }
+
+        @keyframes pulseGreen {
+            0% { box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.4); }
+            70% { box-shadow: 0 0 0 15px rgba(76, 175, 80, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(76, 175, 80, 0); }
+        }
+
+        .empty-msg { text-align: center; color: #aaa; font-size: 1.2rem; margin-top: 50px; font-style: italic; grid-column: 1 / -1; }
+    </style>
+</head>
+<body>
+
+    <div class="top-bar">
+        <div class="logo">CampusServe Canteen</div>
+        <div class="clock" id="clock">00:00</div>
+    </div>
+    
+    <div class="status-board">
+        <div class="column col-preparing">
+            <div class="col-header">Preparing</div>
+            <div class="token-grid" id="prep-grid"></div>
+        </div>
+
+        <div class="column col-ready">
+            <div class="col-header">Ready</div>
+            <div class="token-grid" id="ready-grid"></div>
+        </div>
+    </div>
+
+    <script>
+    // --- 1. FIREBASE CONFIG ---
+    const firebaseConfig = {
+        apiKey: "AIzaSyCD0BToDMJREYOlTSpxNihP__c4uC0tvnY",
+        projectId: "campusserve-5f138",
+        appId: "1:169392088588:web:6af9c03ce5c02fa4433029"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    // --- 2. REAL-TIME DATA LISTENER ---
+    function startRealTimeSync() {
+        const prepGrid = document.getElementById('prep-grid');
+        const readyGrid = document.getElementById('ready-grid');
+
+        // Listen to 'orders' collection
+        // FIX: Changed status values to match Admin Module ("Preparing", "Ready", "Rescheduled")
+        db.collection("orders")
+          .where("status", "in", ["Preparing", "Ready", "Rescheduled", "Delayed"]) 
+          .onSnapshot((snapshot) => {
+            
+            prepGrid.innerHTML = '';
+            readyGrid.innerHTML = '';
+
+            let hasPrep = false;
+            let hasReady = false;
+
+            // Sort by token number or timestamp
+            const sortedDocs = snapshot.docs.sort((a, b) => {
+                const timeA = a.data().orderTime || a.data().timestamp || 0;
+                const timeB = b.data().orderTime || b.data().timestamp || 0;
+                return b - a;
+            });
+
+            sortedDocs.forEach(doc => {
+                const data = doc.data();
+                // Convert to UpperCase just for local logic comparison
+                const status = (data.status || "").toUpperCase();
+                
+                let token = data.tokenNumber || "??";
+                // Ensure token displays as T-XX
+                if (!String(token).startsWith('T-')) token = 'T-' + token;
+
+                const card = document.createElement('div');
+                card.innerText = token;
+
+                if (status === "READY") {
+                    card.className = 'token-card ready';
+                    readyGrid.appendChild(card);
+                    hasReady = true;
+                } else {
+                    // "Preparing", "Rescheduled", and "Delayed" all go to the Preparing column
+                    card.className = 'token-card prep';
+                    prepGrid.appendChild(card);
+                    hasPrep = true;
+                }
+            });
+
+            if (!hasPrep) prepGrid.innerHTML = '<div class="empty-msg">No orders preparing</div>';
+            if (!hasReady) readyGrid.innerHTML = '<div class="empty-msg">No orders ready</div>';
+
+        }, (error) => {
+            console.error("Firestore Error: ", error);
+        });
+    }
+
+    // --- 3. CLOCK LOGIC ---
+    function updateTime() {
+        const now = new Date();
+        document.getElementById('clock').textContent = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        updateTime();
+        setInterval(updateTime, 1000);
+        startRealTimeSync(); 
+    });
+</script>
+</body>
+</html>

@@ -1,0 +1,748 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Broadcast Center - CampusServe</title>
+    
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-storage-compat.js"></script>
+
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.12/cropper.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.12/cropper.min.js"></script>
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        :root { --theme-dark: #1A6922;--bg-color: #f8fafc; --sidebar-bg: #e7f3eb; --primary-green: #007E00; --card-bg: #ffffff;--theme-pale: #C1E1CA;--theme-medium: #A3CCA3;    
+            --theme-light: #BEDFC8;  --text-dark: #1e293b; --border: #e2e8f0; --panel-bg: #ecf7f0; }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Poppins', sans-serif; }
+        body { display: flex; height: 100vh; background-color: var(--bg-color); overflow: hidden; color: var(--text-dark); }
+        
+        /* --- SIDEBAR --- */
+      .sidebar {
+        width: 250px;
+        background-color: #e7f3eb;
+        padding: 20px;
+        display: flex;
+        flex-direction: column;
+        border-right: 1px solid #dcdcdc;
+      }
+      .logo {
+        color: #007e00;
+        font-size: 1.5rem;
+        font-weight: bold;
+        margin-bottom: 40px;
+        text-align: center;
+        cursor: default;
+      }
+      .nav-links {
+        list-style: none;
+      }
+      .nav-links li {
+        margin-bottom: 15px;
+      }
+     .nav-links a {
+        text-decoration: none;
+        color: black;
+        font-size: 1rem;
+        font-weight: 500;
+        display: block;
+        padding: 10px 15px;
+        border-radius: 16px;
+        transition: 0.3s;
+        cursor: pointer;
+    }
+      .nav-links a.active {
+        background-color: #fff;
+        color: #016301;
+        font-size: 18px;
+        font-weight: bold;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+      }
+      .nav-links a:hover {
+        background-color: #c8e6c9;
+      }
+
+        /* MAIN CONTENT */
+        .main-content { flex: 1; padding: 30px; overflow-y: auto; display: flex; flex-direction: column; }
+    
+        .content-grid { display: grid; grid-template-columns: 1.4fr 1fr; gap: 30px; padding-bottom: 50px; }
+
+        /* CREATOR CARD */
+        .creator-card { background: var(--card-bg); border-radius: 20px; padding: 30px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); border: 1px solid var(--border); display: flex; flex-direction: column; }
+        
+        /* --- MODE TABS (New) --- */
+        .mode-tabs { display: flex; background: #f1f5f9; padding: 5px; border-radius: 12px; margin-bottom: 20px; }
+        .mode-tab { flex: 1; text-align: center; padding: 10px; cursor: pointer; font-weight: 600; border-radius: 10px; transition: 0.2s; color: #64748b; }
+        .mode-tab.active { background: white; color: var(--primary-green); box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .mode-tab:hover:not(.active) { background: #e2e8f0; }
+
+        .section-label { font-size: 0.85rem; font-weight: 700; color: #64748b; margin-bottom: 8px; margin-top: 15px; display: block; text-transform: uppercase; letter-spacing: 0.5px; }
+        .input-field, .select-field { width: 100%; padding: 12px 15px; border-radius: 10px; border: 1px solid var(--border); background: #f8fafc; font-size: 0.95rem; outline: none; }
+        
+        /* ANNOUNCEMENT TYPE TOGGLE */
+        .type-toggle { display: flex; gap: 15px; margin-bottom: 10px; }
+        .type-btn { flex: 1; padding: 12px; border: 2px solid var(--border); border-radius: 10px; background: white; cursor: pointer; font-weight: 600; text-align: center; transition: 0.2s; }
+        .type-btn.active { border-color: var(--primary-green); background: #f0fdf4; color: var(--primary-green); }
+        .type-btn i { margin-right: 8px; }
+
+        /* EDITOR */
+        .editor-container { border: 2px solid #cbd5e1; border-radius: 12px; overflow: hidden; background: #fff; }
+        .editor-toolbar { background: #f1f5f9; padding: 8px 12px; display: flex; gap: 8px; border-bottom: 1px solid #cbd5e1; }
+        .format-btn { background: white; border: 1px solid #cbd5e1; border-radius: 6px; width: 32px; height: 32px; cursor: pointer; color: #475569; }
+        .editor-content { min-height: 100px; padding: 15px; outline: none; line-height: 1.6; color: #334155; max-height: 150px; overflow-y: auto; }
+
+        /* IMAGE STUDIO */
+        .img-upload-area { border: 2px dashed var(--border); border-radius: 12px; padding: 20px; text-align: center; cursor: pointer; background: #f8fafc; margin-top: 10px; }
+        .preview-container { display: none; width: 100%; height: 400px; margin-top:10px; border-radius: 12px; overflow: hidden; border: 1px solid #cbd5e1; background: #f0f0f0; }
+        .studio-controls { display: none; background: #fff; padding: 12px; border-radius: 12px; border: 1px solid var(--border); margin-top: 10px; flex-direction: column; gap: 10px; }
+        .control-row { display: flex; gap: 8px; justify-content: flex-start; flex-wrap: wrap; }
+        .ratio-btn { padding: 6px 12px; border-radius: 6px; border: 1px solid #cbd5e1; background: #fff; cursor: pointer; font-size: 0.85rem; font-weight: 500; color: #333; }
+        .ratio-btn.active { background: #166534; color: white; border-color: #166534; }
+        .action-btn { padding: 6px 16px; border-radius: 6px; border: none; cursor: pointer; font-weight: 600; font-size: 0.9rem; }
+        .btn-save { background: var(--primary-green); color: white; }
+        .btn-cancel { background: #fee2e2; color: #991b1b; }
+
+        /* SCHEDULE & BUTTON */
+        .schedule-box { background: #fffbeb; border: 1px solid #fef3c7; padding: 15px; border-radius: 12px; margin-top: 20px; }
+        .publish-btn { width: 100%; padding: 16px; border-radius: 12px; font-weight: 700; font-size: 1.1rem; background: var(--primary-green); color: white; border: none; cursor: pointer; margin-top: 20px; }
+        .alert-btn { background: #d97706; }
+
+        /* ALERT SPECIFIC */
+        .emoji-row { display: flex; gap: 10px; margin-bottom: 10px; overflow-x: auto; padding-bottom: 5px; }
+        .emoji-btn { font-size: 1.5rem; cursor: pointer; padding: 5px; border-radius: 8px; transition: 0.2s; background: #f1f5f9; border: none; }
+        .emoji-btn:hover { background: #e2e8f0; transform: scale(1.1); }
+
+        /* HISTORY */
+        .history-column { display: flex; flex-direction: column; gap: 0; overflow-y: auto; padding-right: 5px; height: 100%; }
+        .history-tabs { display: flex; gap: 10px; margin-bottom: 15px; border-bottom: 2px solid #f1f5f9; padding-bottom: 10px; }
+        .tab-btn { background: transparent; border: none; font-size: 0.95rem; font-weight: 600; color: #94a3b8; cursor: pointer; padding: 5px 10px; position: relative; }
+        .tab-btn.active { color: var(--primary-green); }
+        .tab-btn.active::after { content: ''; position: absolute; bottom: -12px; left: 0; width: 100%; height: 2px; background: var(--primary-green); }
+
+        .history-card { background: var(--card-bg); padding: 15px; border-radius: 16px; border: 1px solid var(--border); margin-bottom: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+    .h-img { 
+        width: calc(100%); 
+        margin: -15px -15px 12px -15px; 
+        height: 350px; 
+        object-fit: fill; 
+        border-radius: 12px 12px 0 0; 
+        border: none;
+        border-bottom: 1px solid #eee;
+        display: block; 
+    }        .h-tag { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: 700; margin-bottom: 5px; text-transform: uppercase; }
+        .tag-item { background: #e0f2fe; color: #0284c7; }
+        .tag-deal { background: #fef9c3; color: #ca8a04; }
+        .tag-alert { background: #fee2e2; color: #dc2626; }
+        .h-title { font-weight: 700; font-size: 0.95rem; color: #1e293b; }
+        .h-msg { font-size: 0.85rem; color: #64748b; margin-bottom: 10px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+        .btn-action { cursor: pointer; font-size: 0.85rem; font-weight: 600; margin-right: 10px; color: #64748b; }
+        .btn-action:hover { color: var(--primary-green); }
+
+        /* TOGGLE SWITCH STYLE */
+        .switch { position: relative; display: inline-block; width: 44px; height: 24px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #cbd5e1; -webkit-transition: .4s; transition: .4s; border-radius: 34px; }
+        .slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px; background-color: white; -webkit-transition: .4s; transition: .4s; border-radius: 50%; }
+        input:checked + .slider { background-color: #007E00; }
+        input:checked + .slider:before { -webkit-transform: translateX(20px); -ms-transform: translateX(20px); transform: translateX(20px); }
+
+        .toast { visibility: hidden; position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background: #1e293b; color: #fff; padding: 12px 24px; border-radius: 50px; z-index: 4000; }
+        .toast.show { visibility: visible; animation: fadeUp 0.3s; }
+        @keyframes fadeUp { from {transform: translate(-50%, 20px); opacity: 0;} to {transform: translate(-50%, 0); opacity: 1;} }
+
+        /* --- NOTIFICATION ICON --- */
+        .notif-icon {
+            font-size: 1.5rem; color: #555; cursor: pointer; position: relative; margin-right: 15px;
+        }
+        .notif-icon:hover { color: var(--primary-green); }
+        .user-actions { display: flex; align-items: center; gap: 15px; }
+        .notification { width: 45px; height: 45px; background: #fff; border-radius: 30%; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 5px rgba(0,0,0,0.1); border: 1px solid var(--theme-medium); cursor: pointer; text-decoration: none; color: var(--theme-dark); transition: all 0.3s ease; }
+        .notification i {
+            color: #FFD700; 
+            -webkit-text-stroke: 1px black; 
+            font-size: 1.2rem; 
+        }
+        .notification:hover { background-color: var(--theme-light); transform: scale(1.1); }
+        .menu-toggle-btn { width: 42px; height: 42px; border-radius: 12px; background: var(--theme-pale); color: var(--theme-dark); display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 1.1rem; border: 1px solid var(--theme-medium); transition: 0.3s; }
+        .menu-toggle-btn:hover { background: var(--theme-light); transform: translateY(-2px); }
+
+        .top-bar { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            margin-bottom: 10px; 
+            flex-shrink: 0; 
+        }
+
+        .header { 
+            display: flex; 
+            justify-content: flex-end; 
+            align-items: center; 
+            margin-bottom: 25px; 
+        }
+
+        .page-title { 
+            font-size: 1.8rem; 
+            font-weight: 700; 
+            color: #1b5e20; 
+        }
+
+        /* --- RIGHT PANEL STYLES (NEW) --- */
+        .right-panel { position: fixed; top: 0; right: -460px; width: 320px; height: 100vh; background-color: var(--panel-bg); z-index: 2000; box-shadow: -5px 0 15px rgba(0, 0, 0, 0.1); transition: right 0.4s cubic-bezier(0.25, 0.8, 0.25, 1); display: flex; flex-direction: column; overflow-y: auto; }
+        .right-panel.open { right: 0; }
+        .panel-content { display: none; flex-direction: column; padding: 80px 20px 20px 20px; gap: 15px; width: 100%; }
+        .panel-content.active { display: flex; }
+        .panel-btn { background-color: #ffffff; border: 2px solid #e0e0e0; color: #2e7d32; padding: 12px 20px; border-radius: 30px; font-weight: 600; font-size: 0.9rem; text-align: left; cursor: pointer; transition: 0.2s; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05); text-decoration: none; display: block; }
+        .panel-btn:hover { border-color: #4caf50; color: #1b5e20; transform: translateX(5px); }
+        .panel-close-btn { position: absolute; top: 25px; left: 20px; width: 40px; height: 40px; border: 2px solid #1b5e20; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #1b5e20; font-size: 20px; cursor: pointer; z-index: 1100; transition: background-color 0.2s; }
+        .panel-close-btn:hover { background-color: #c8e6c9; }
+
+    </style>
+</head>
+<body>
+    <aside class="right-panel" id="menuSidebar">
+        <div class="panel-close-btn" onclick="toggleMenu()">
+            <i class="fas fa-arrow-right"></i>
+        </div>
+        <div class="panel-content active">
+            <h3 style="color:#1b5e20; margin-bottom:5px; font-size: 1.1rem; font-weight: 700;">Menu Actions</h3>
+            <a href="10feedback.html" class="panel-btn">FeedBacks</a>
+            <a href="8complains.html" class="panel-btn">Complains</a>
+        </div>
+    </aside>
+
+    <aside class="sidebar">
+        <div class="logo">CampusServe<br>Canteen</div>
+        <ul class="nav-links">
+            <li><a href="2dashboard.html">Dashboard</a></li>
+            <li><a href="3order_management.html">Orders</a></li>
+            <li><a href="4menu_management.html">Menu Management</a></li>
+            <li><a href="13transaction.html">Transactions</a></li>
+            <li><a href="6users.html">Users</a></li>
+            <li><a href="5analytics.html">Analytics</a></li>
+            <li><a href="11announcement.html" class="active">Announcements</a></li>
+                    <li><a href="15deals.html">Combo / Deals</a></li>
+
+            <li><a href="9settings.html">Settings</a></li>
+        </ul>
+    </aside>
+
+    <main class="main-content">
+        <header class="top-bar">
+            <div class="page-title">Broadcast Center</div> 
+            
+            <div class="user-actions">
+                <div class="notification" onclick="window.location.href='14notification.html'"><i class="fa-solid fa-bell"></i></div>
+                <div class="menu-toggle-btn" onclick="toggleMenu()"><i class="fas fa-bars"></i></div>
+            </div>
+        </header>
+
+        <div class="header">
+            <button class="action-btn" style="background:#eef2ff; color:#4338ca;" onclick="resetForm()">Reset Form</button>
+        </div>
+
+        <div class="content-grid">
+            <div class="creator-card">
+                
+                <div class="mode-tabs">
+                    <div class="mode-tab active" id="tabPost" onclick="switchMode('post')">
+                        <i class="fas fa-bullhorn"></i> Dashboard Post
+                    </div>
+                    <div class="mode-tab" id="tabAlert" onclick="switchMode('alert')">
+                        <i class="fas fa-bell"></i> System Alert
+                    </div>
+                </div>
+
+                <div id="formPost">
+                    <label class="section-label" style="margin-top:0;">1. Type</label>
+                    <div class="type-toggle">
+                        <div class="type-btn active" id="btnTypeItem" onclick="setType('item')"><i class="fas fa-utensils"></i> Item Feature</div>
+                        <div class="type-btn" id="btnTypeDeal" onclick="setType('deal')"><i class="fas fa-tags"></i> Special Deal</div>
+                    </div>
+
+                    <label class="section-label">2. Headline</label>
+                    <input type="text" id="annTitle" class="input-field" placeholder="e.g. Burger Bonanza!">
+
+                    <div id="itemSelectionArea">
+                        <label class="section-label">3. Tag Menu Item</label>
+                        <div style="display:flex; gap:10px;">
+                            <select id="catSelect" class="select-field" onchange="loadItems(this.value)"><option value="">Select Category...</option></select>
+                            <select id="itemSelect" class="select-field" disabled onchange="onItemSelect()"><option value="">Select Item...</option></select>
+                        </div>
+                    </div>
+                    <div id="dealDetailsArea" style="display:none;">
+                        <label class="section-label">3. Deal Details</label>
+                        <textarea id="dealDetails" class="input-field" rows="2" placeholder="e.g. Buy 1 Get 1 Free on all Pasta..."></textarea>
+                    </div>
+
+                    <label class="section-label">4. Message</label>
+                    <div class="editor-container">
+                        <div class="editor-toolbar">
+                            <button class="format-btn" onclick="document.execCommand('bold',false,null)"><i class="fas fa-bold"></i></button>
+                            <button class="format-btn" onclick="document.execCommand('italic',false,null)"><i class="fas fa-italic"></i></button>
+                        </div>
+                        <div id="annMessage" class="editor-content" contenteditable="true" placeholder="Type message..."></div>
+                    </div>
+
+                    <label class="section-label">5. Image</label>
+                    <input type="file" id="fileInput" hidden accept="image/*">
+                    <div class="img-upload-area" id="uploadArea" onclick="document.getElementById('fileInput').click()">
+                        <i class="fas fa-cloud-upload-alt" style="font-size:1.5rem; color:#cbd5e1;"></i>
+                        <span style="color:#64748b; font-weight:600; margin-left:10px;">Upload Image</span>
+                    </div>
+
+                    <div class="schedule-box">
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <div style="display:flex; align-items:center; gap:10px;">
+                                <i class="far fa-clock" style="color:#b45309;"></i>
+                                <span style="font-weight:700; color:#b45309;">Schedule Post</span>
+                            </div>
+                            <label class="switch">
+                                <input type="checkbox" id="enableSchedule" onchange="toggleSchedule()">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                        <div id="scheduleInputs" style="display:none; margin-top:10px;">
+                            <input type="datetime-local" id="scheduleTime" class="input-field" style="background:white;">
+                        </div>
+                    </div>
+
+                    <button class="publish-btn" onclick="publishAnnouncement('post')" id="pubBtn">Publish Post</button>
+                </div>
+
+                <div id="formAlert" style="display:none;">
+                    <label class="section-label" style="margin-top:0;">1. Quick Title</label>
+                    <div class="emoji-row">
+                        <button class="emoji-btn" onclick="addEmoji('📢')">📢</button>
+                        <button class="emoji-btn" onclick="addEmoji('⚠️')">⚠️</button>
+                        <button class="emoji-btn" onclick="addEmoji('🎉')">🎉</button>
+                        <button class="emoji-btn" onclick="addEmoji('⏳')">⏳</button>
+                    </div>
+                    <input type="text" id="alertTitle" class="input-field" placeholder="e.g. Kitchen Closing Soon">
+
+                    <label class="section-label">2. Alert Message</label>
+                    <textarea id="alertBody" class="input-field" rows="4" placeholder="Enter text for the push notification..."></textarea>
+
+                    <label class="section-label">3. Attach Image (Optional)</label>
+                    <div class="img-upload-area" id="uploadAreaAlert" onclick="document.getElementById('fileInput').click()">
+                        <i class="fas fa-camera" style="font-size:1.5rem; color:#cbd5e1;"></i>
+                        <span style="color:#64748b; font-weight:600; margin-left:10px;">Upload Image</span>
+                    </div>
+
+                    <button class="publish-btn alert-btn" onclick="publishAnnouncement('alert')">
+                        <i class="fas fa-paper-plane"></i> Send Alert
+                    </button>
+                </div>
+
+                <div class="preview-container" id="cropContainer">
+                    <img id="cropImage" style="max-width:100%; display:block;">
+                </div>
+                <div class="studio-controls" id="studioControls">
+                    <div class="control-row">
+                        <button class="ratio-btn" onclick="fitImage()">Fit</button>
+                        <button class="ratio-btn active" onclick="setRatio(16/9, this)">16:9</button>
+                        <button class="ratio-btn" onclick="setRatio(1, this)">1:1</button>
+                    </div>
+                    <div class="control-row" style="margin-top:10px; justify-content:space-between; width:100%">
+                        <button class="action-btn btn-cancel" onclick="resetImage()">Cancel</button>
+                        <button class="action-btn btn-save" onclick="confirmCrop()">Save</button>
+                    </div>
+                </div>
+
+            </div>
+
+            <div class="history-column">
+                <div class="history-tabs">
+                    <button class="tab-btn active" onclick="switchTab('active', this)">Active</button>
+                    <button class="tab-btn" onclick="switchTab('scheduled', this)">Scheduled</button>
+                    <button class="tab-btn" onclick="switchTab('history', this)">History</button>
+                    <button class="tab-btn" onclick="switchTab('notifications', this)">Notifications</button>
+                </div>
+                <div id="listContainer">Loading...</div>
+            </div>
+        </div>
+    </main>
+
+    <div id="toast" class="toast"></div>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyCD0BToDMJREYOlTSpxNihP__c4uC0tvnY",
+            projectId: "campusserve-5f138",
+            appId: "1:169392088588:web:6af9c03ce5c02fa4433029",
+            storageBucket: "campusserve-5f138.firebasestorage.app"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        let currentType = 'item';
+        let cropper = null;
+        let finalImageBase64 = null;
+        let editingId = null;
+        let selectedItemData = null; 
+        let currentMode = 'post'; 
+
+        window.onload = () => {
+            loadCategories();
+            listenToHistory(); 
+            startScheduleChecker(); 
+        };
+
+        function switchMode(mode) {
+            currentMode = mode;
+            document.getElementById('tabPost').className = mode === 'post' ? 'mode-tab active' : 'mode-tab';
+            document.getElementById('tabAlert').className = mode === 'alert' ? 'mode-tab active' : 'mode-tab';
+            document.getElementById('formPost').style.display = mode === 'post' ? 'block' : 'none';
+            document.getElementById('formAlert').style.display = mode === 'alert' ? 'block' : 'none';
+            resetImage(); 
+        }
+
+        function setType(type) {
+            currentType = type;
+            document.getElementById('btnTypeItem').className = type === 'item' ? 'type-btn active' : 'type-btn';
+            document.getElementById('btnTypeDeal').className = type === 'deal' ? 'type-btn active' : 'type-btn';
+            document.getElementById('itemSelectionArea').style.display = type === 'item' ? 'block' : 'none';
+            document.getElementById('dealDetailsArea').style.display = type === 'deal' ? 'block' : 'none';
+        }
+
+        function toggleSchedule() {
+            document.getElementById('scheduleInputs').style.display = document.getElementById('enableSchedule').checked ? 'block' : 'none';
+        }
+
+        function addEmoji(emoji) {
+            const input = document.getElementById('alertTitle');
+            input.value = emoji + " " + input.value;
+            input.focus();
+        }
+
+        function loadCategories() {
+            const catSelect = document.getElementById('catSelect');
+            db.collection('categories').get().then(snap => {
+                snap.forEach(doc => {
+                    const opt = document.createElement('option');
+                    opt.value = doc.data().name; opt.innerText = doc.data().name;
+                    catSelect.appendChild(opt);
+                });
+            });
+        }
+        
+        function loadItems(category) {
+            const itemSelect = document.getElementById('itemSelect');
+            itemSelect.innerHTML = '<option value="">Select Item...</option>';
+            itemSelect.disabled = true;
+            if(!category) return;
+            db.collection('menu').where('category', '==', category).get().then(snap => {
+                itemSelect.disabled = false;
+                snap.forEach(doc => {
+                    const data = doc.data();
+                    const opt = document.createElement('option');
+                    opt.value = doc.id;
+                    opt.dataset.name = data.name;
+                    opt.dataset.price = data.price;
+                    opt.dataset.image = data.image_url || '';
+                    opt.innerText = data.name;
+                    itemSelect.appendChild(opt);
+                });
+            });
+        }
+        
+        function onItemSelect() {
+            const select = document.getElementById('itemSelect');
+            const opt = select.options[select.selectedIndex];
+            if(opt.value) {
+                selectedItemData = { id: opt.value, name: opt.dataset.name, price: opt.dataset.price, image: opt.dataset.image };
+                if(!document.getElementById('annTitle').value) document.getElementById('annTitle').value = "Try our " + selectedItemData.name;
+            }
+        }
+
+        // --- FIXED IMAGE HANDLER (No white background, prevents 1MB crash) ---
+        document.getElementById('fileInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (ev) => {
+                    document.getElementById('uploadArea').style.display = 'none';
+                    document.getElementById('uploadAreaAlert').style.display = 'none';
+                    
+                    document.getElementById('cropContainer').style.display = 'block';
+                    document.getElementById('studioControls').style.display = 'flex';
+                    const img = document.getElementById('cropImage');
+                    img.src = ev.target.result;
+                    if(cropper) cropper.destroy();
+                    
+                    // FIX: viewMode: 1 strictly prevents creating empty white spaces around the image
+                    cropper = new Cropper(img, { aspectRatio: 16/9, viewMode: 1, autoCropArea: 1, minContainerHeight: 350 });
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+        
+        function fitImage() { if (cropper) { cropper.reset(); cropper.setAspectRatio(NaN); } }
+        function setRatio(r, btn) { if(cropper) { cropper.setAspectRatio(r); document.querySelectorAll('.ratio-btn').forEach(b => b.classList.remove('active')); btn.classList.add('active'); } }
+        
+        function confirmCrop() {
+            if(cropper) {
+                // FIX: Reduced width to 600 & compressed to JPEG to avoid Firebase 1MB Payload Crash
+                finalImageBase64 = cropper.getCroppedCanvas({ width: 600, fillColor: '#ffffff' }).toDataURL('image/jpeg', 0.8);
+                
+                document.getElementById('cropContainer').style.display = 'none';
+                document.getElementById('studioControls').style.display = 'none';
+                
+                if (currentMode === 'post') {
+                    document.getElementById('uploadArea').style.display = 'block';
+                    document.getElementById('uploadArea').innerHTML = `<img src="${finalImageBase64}" style="width:100%; height:120px; object-fit:cover; border-radius:8px;">`;
+                } else {
+                    document.getElementById('uploadAreaAlert').style.display = 'block';
+                    document.getElementById('uploadAreaAlert').innerHTML = `<img src="${finalImageBase64}" style="width:100%; height:120px; object-fit:cover; border-radius:8px;">`;
+                }
+            }
+        }
+
+        function resetImage() {
+            if(cropper) cropper.destroy();
+            finalImageBase64 = null;
+            document.getElementById('fileInput').value = "";
+            document.getElementById('cropContainer').style.display = 'none';
+            document.getElementById('studioControls').style.display = 'none';
+            
+            document.getElementById('uploadArea').style.display = 'block';
+            document.getElementById('uploadArea').innerHTML = `<i class="fas fa-cloud-upload-alt" style="font-size:1.5rem; color:#cbd5e1;"></i><span style="color:#64748b; margin-left:10px;">Upload Image</span>`;
+            
+            document.getElementById('uploadAreaAlert').style.display = 'block';
+            document.getElementById('uploadAreaAlert').innerHTML = `<i class="fas fa-camera" style="font-size:1.5rem; color:#cbd5e1;"></i><span style="color:#64748b; margin-left:10px;">Upload Image</span>`;
+            
+            if(currentMode === 'post') document.getElementById('uploadAreaAlert').parentElement.style.display = 'none'; 
+        }
+
+        // --- FIXED PUBLISH FUNCTION (Updates instead of making duplicates) ---
+        async function publishAnnouncement(mode) {
+            try {
+                let title, message, image;
+                
+                if (mode === 'post') {
+                    title = document.getElementById('annTitle').value;
+                    message = document.getElementById('annMessage').innerText;
+                    image = finalImageBase64;
+                    if(!title) return showToast("Title required");
+
+                    const dealDetails = document.getElementById('dealDetails').value;
+                    const isSched = document.getElementById('enableSchedule').checked;
+                    const schedTime = document.getElementById('scheduleTime').value;
+
+                    let postData = {
+                        title, 
+                        message, 
+                        image, 
+                        type: currentType,
+                        dealDetails: currentType === 'deal' ? dealDetails : null,
+                        taggedItemId: (currentType === 'item' && selectedItemData) ? selectedItemData.id : null,
+                        scheduledTime: isSched ? schedTime : null,
+                        status: isSched ? 'scheduled' : 'active'
+                    };
+
+                    if (editingId) {
+                        // THIS FIXES THE BUG: Now it updates the existing post instead of making a copy!
+                        await db.collection("announcements").doc(editingId).update(postData);
+                        showToast("Post Updated Successfully!");
+                    } else {
+                        // Create brand new post
+                        postData.timestamp = firebase.firestore.FieldValue.serverTimestamp();
+                        await db.collection("announcements").add(postData);
+
+                        if(!isSched) {
+                            await db.collection("notifications").add({
+                                title: `📢 ${title}`,
+                                message: message.replace(/<[^>]*>?/gm, ''),
+                                type: "general",
+                                image: image,
+                                targetId: "announcement",
+                                timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                                isRead: false
+                            });
+                            showToast("Published & Notified!");
+                        } else {
+                            showToast("Scheduled Successfully!");
+                        }
+                    }
+                    
+                } else {
+                    // ALERT MODE
+                    title = document.getElementById('alertTitle').value;
+                    message = document.getElementById('alertBody').value;
+                    image = finalImageBase64; 
+                    if(!title || !message) return showToast("Title & Message required");
+
+                    await db.collection("notifications").add({
+                        title: title,
+                        message: message,
+                        image: image, 
+                        type: "alert",
+                        targetId: "system_alert",
+                        timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                        isRead: false
+                    });
+                    showToast("Alert Sent!");
+                }
+                resetForm();
+            } catch (error) {
+                console.error("Firebase Error:", error);
+                showToast("Error! Image might be too large or connection failed.");
+            }
+        }
+
+        function startScheduleChecker() {
+            setInterval(() => {
+                const now = new Date().toISOString();
+                db.collection('announcements')
+                  .where('status', '==', 'scheduled')
+                  .where('scheduledTime', '<=', now)
+                  .get()
+                  .then(snap => {
+                      snap.forEach(doc => {
+                          const data = doc.data();
+                          db.collection('announcements').doc(doc.id).update({ status: 'active' });
+                          db.collection("notifications").add({
+                                title: `📢 ${data.title}`,
+                                message: data.message.replace(/<[^>]*>?/gm, ''),
+                                type: "general",
+                                image: data.image,
+                                targetId: "announcement",
+                                timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                                isRead: false
+                          });
+                          console.log("Auto-published:", data.title);
+                      });
+                  });
+            }, 60000); 
+        }
+
+        let unsubscribe = null;
+        function switchTab(tab, btn) {
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            
+            if(tab === 'notifications') {
+                listenToNotifications(); 
+            } else {
+                listenToHistory(tab); 
+            }
+        }
+
+        function listenToHistory(filter = 'active') {
+            if(unsubscribe) unsubscribe();
+            let query = db.collection('announcements').orderBy('timestamp', 'desc').limit(20);
+
+            unsubscribe = query.onSnapshot(snap => {
+                const container = document.getElementById('listContainer');
+                container.innerHTML = "";
+                
+                snap.forEach(doc => {
+                    const d = doc.data();
+                    let shouldShow = false;
+                    const isFuture = d.scheduledTime && new Date(d.scheduledTime) > new Date();
+                    
+                    if (filter === 'scheduled' && (d.status === 'scheduled')) shouldShow = true;
+                    else if (filter === 'active' && d.status === 'active') shouldShow = true;
+                    else if (filter === 'history' && d.status === 'archived') shouldShow = true;
+
+                    if(shouldShow) {
+                        const typeTag = d.type === 'deal' ? `<span class="h-tag tag-deal">Deal</span>` : `<span class="h-tag tag-item">Post</span>`;
+                        const imgHTML = d.image ? `<img src="${d.image}" class="h-img">` : '';
+                        container.innerHTML += `
+                            <div class="history-card">
+                                ${imgHTML}
+                                ${typeTag}
+                                <div class="h-title">${d.title}</div>
+                                <div class="h-msg">${d.message.replace(/<[^>]*>?/gm, '')}</div>
+                                <div style="display:flex; justify-content:space-between; margin-top:10px; border-top:1px solid #f1f5f9; padding-top:10px;">
+                                    <div class="btn-action" onclick="editAnn('${doc.id}')"><i class="fas fa-edit"></i> Edit</div>
+                                    <div class="btn-action" style="color:#ef4444;" onclick="deleteAnn('${doc.id}')"><i class="fas fa-trash"></i> Delete</div>
+                                </div>
+                            </div>`;
+                    }
+                });
+            });
+        }
+
+        function listenToNotifications() {
+            if(unsubscribe) unsubscribe();
+            let query = db.collection('notifications').orderBy('timestamp', 'desc').limit(20);
+
+            unsubscribe = query.onSnapshot(snap => {
+                const container = document.getElementById('listContainer');
+                container.innerHTML = "";
+                if(snap.empty) {
+                    container.innerHTML = `<div style="text-align:center; color:#ccc; margin-top:20px;">No notifications sent.</div>`;
+                    return;
+                }
+                snap.forEach(doc => {
+                    const d = doc.data();
+                    if(d.type === 'general' || d.type === 'alert') {
+                        const typeTag = d.type === 'alert' ? `<span class="h-tag tag-alert">System Alert</span>` : `<span class="h-tag tag-item">General</span>`;
+                        const imgHTML = d.image ? `<img src="${d.image}" class="h-img">` : '';
+                        container.innerHTML += `
+                            <div class="history-card">
+                                ${imgHTML}
+                                ${typeTag}
+                                <div class="h-title">${d.title}</div>
+                                <div class="h-msg">${d.message}</div>
+                                <div style="display:flex; justify-content:flex-end; margin-top:10px; border-top:1px solid #f1f5f9; padding-top:10px;">
+                                    <div class="btn-action" style="color:#ef4444;" onclick="deleteNotif('${doc.id}')"><i class="fas fa-trash"></i> Delete</div>
+                                </div>
+                            </div>`;
+                    }
+                });
+            });
+        }
+
+        function editAnn(id) {
+            switchMode('post'); 
+            editingId = id;
+            db.collection('announcements').doc(id).get().then(doc => {
+                const d = doc.data();
+                setType(d.type || 'item');
+                document.getElementById('annTitle').value = d.title;
+                document.getElementById('annMessage').innerHTML = d.message;
+                if(d.type === 'deal') document.getElementById('dealDetails').value = d.dealDetails || '';
+                
+                if(d.image) {
+                    finalImageBase64 = d.image;
+                    document.getElementById('uploadArea').innerHTML = `<img src="${d.image}" style="width:100%; height:120px; object-fit:cover;">`;
+                }
+                document.getElementById('pubBtn').innerText = "Update Post";
+            });
+        }
+
+        function deleteAnn(id) {
+            if(confirm("Delete this post?")) db.collection('announcements').doc(id).delete();
+        }
+
+        function deleteNotif(id) {
+            if(confirm("Delete this notification?")) db.collection('notifications').doc(id).delete();
+        }
+
+        function resetForm() {
+            editingId = null;
+            document.getElementById('annTitle').value = "";
+            document.getElementById('annMessage').innerHTML = "";
+            document.getElementById('dealDetails').value = "";
+            document.getElementById('alertTitle').value = "";
+            document.getElementById('alertBody').value = "";
+            resetImage();
+            document.getElementById('pubBtn').innerText = "Publish Post";
+        }
+
+        function showToast(msg) {
+            const t = document.getElementById('toast');
+            t.innerText = msg; t.classList.add('show');
+            setTimeout(() => t.classList.remove('show'), 3000);
+        }
+        function toggleMenu() { document.getElementById("menuSidebar").classList.toggle("open"); }
+
+    </script>
+</body>
+</html>

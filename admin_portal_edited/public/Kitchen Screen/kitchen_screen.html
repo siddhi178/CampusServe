@@ -1,0 +1,428 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Kitchen Display System</title>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        /* APP THEME COLORS */
+        --bg: #ffffff; /* Pure White Screen */
+        --white: #ffffff;
+        --app-theme: #bedfc8; /* Your exact app theme color */
+        --primary: #4caf50; /* Standard Flutter Green */
+        --primary-dark: #1b5e20; /* Dark Green from your app text */
+        --late: #ef4444;
+        --late-light: #fee2e2;
+        --text-main: #1f2937;
+        --text-muted: #6b7280;
+      }
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        background: var(--bg);
+        font-family: "Poppins", sans-serif;
+        color: var(--text-main);
+      }
+
+      /* --- NAVBAR --- */
+      header {
+        background: var(--white);
+        color: var(--primary-dark);
+        padding: 15px 30px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 2px solid var(--app-theme);
+        box-shadow: 0 4px 15px rgba(190, 223, 200, 0.3); /* Themed soft shadow */
+        margin-bottom: 30px;
+      }
+
+      header h1 {
+        font-size: 1.4rem;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        color: var(--primary-dark);
+      }
+
+      .header-right {
+        display: flex;
+        align-items: center;
+        gap: 20px;
+      }
+
+      .live-indicator {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 0.95rem;
+        color: var(--primary);
+        font-weight: 600;
+      }
+
+      .pulse-dot {
+        width: 8px;
+        height: 8px;
+        background-color: var(--primary);
+        border-radius: 50%;
+        animation: pulse-dot 1.5s infinite;
+      }
+
+      #liveClock {
+        font-size: 1.1rem;
+        font-weight: 700;
+        background: var(--app-theme);
+        color: var(--primary-dark);
+        padding: 6px 14px;
+        border-radius: 8px;
+        letter-spacing: 1px;
+      }
+
+      /* --- MAIN GRID --- */
+      .container {
+        padding: 0 30px 30px 30px;
+      }
+
+      .section-title {
+        margin-bottom: 20px;
+        font-size: 1.2rem;
+        font-weight: 700;
+        color: var(--primary-dark);
+      }
+
+      .orders-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+        gap: 24px;
+      }
+
+      /* --- CARDS --- */
+      .order-card {
+        background: var(--white);
+        border-radius: 16px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.04);
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        border: 1.5px solid var(--app-theme); /* Themed border */
+        border-top: 6px solid var(--primary);
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+      }
+
+      .order-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 10px 25px rgba(190, 223, 200, 0.4);
+      }
+
+      .order-card.is-overdue {
+        border-top-color: var(--late);
+        border-color: var(--late-light);
+      }
+
+      .card-header {
+        padding: 16px 20px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 1.5px solid var(--app-theme);
+        background: rgba(190, 223, 200, 0.15); /* Very light tint of theme color */
+      }
+
+      .token-wrapper {
+        display: flex;
+        flex-direction: column;
+      }
+
+      .token-label {
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        color: var(--text-muted);
+        font-weight: 700;
+        letter-spacing: 0.5px;
+      }
+
+      .token-num {
+        font-size: 1.8rem;
+        font-weight: 900;
+        color: var(--primary-dark);
+        line-height: 1.1;
+      }
+
+      .timer-badge {
+        background: var(--app-theme);
+        color: var(--primary-dark);
+        padding: 6px 14px;
+        border-radius: 20px;
+        font-weight: 800;
+        font-size: 1.1rem;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+
+      .timer-badge.overdue {
+        background: var(--late-light);
+        color: var(--late);
+        animation: pulse 1.5s infinite;
+      }
+
+      /* --- ITEMS LIST --- */
+      .items-container {
+        flex: 1;
+        overflow-y: auto;
+        max-height: 220px;
+        padding: 10px 0;
+      }
+
+      .item-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 12px 20px;
+        border-bottom: 1px dashed #d1d5db;
+        font-size: 0.95rem;
+        font-weight: 600;
+        color: var(--text-main);
+      }
+
+      .item-row:last-child {
+        border-bottom: none;
+      }
+
+      .qty-badge {
+        background: var(--app-theme);
+        color: var(--primary-dark);
+        padding: 4px 10px;
+        border-radius: 6px;
+        font-weight: 800;
+        font-size: 0.9rem;
+      }
+
+      /* --- CUSTOM SCROLLBAR --- */
+      .items-container::-webkit-scrollbar {
+        width: 6px;
+      }
+      .items-container::-webkit-scrollbar-track {
+        background: #f1f1f1;
+      }
+      .items-container::-webkit-scrollbar-thumb {
+        background: var(--app-theme);
+        border-radius: 10px;
+      }
+      .items-container::-webkit-scrollbar-thumb:hover {
+        background: var(--primary);
+      }
+
+      /* --- BUTTON --- */
+      .btn-ready {
+        margin: 15px 20px 20px 20px;
+        padding: 14px;
+        background: var(--primary);
+        color: #fff;
+        border: none;
+        border-radius: 10px;
+        font-weight: 700;
+        font-size: 1.05rem;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 8px;
+        box-shadow: 0 4px 10px rgba(76, 175, 80, 0.3);
+      }
+
+      .btn-ready:hover {
+        background: var(--primary-dark);
+        box-shadow: 0 6px 15px rgba(27, 94, 32, 0.3);
+        transform: translateY(-1px);
+      }
+
+      .btn-ready:active {
+        transform: scale(0.98);
+      }
+
+      /* --- EMPTY STATE --- */
+      .empty-state {
+        grid-column: 1 / -1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 50vh;
+        color: var(--primary-dark);
+      }
+
+      .empty-state i {
+        font-size: 4.5rem;
+        color: var(--app-theme);
+        margin-bottom: 15px;
+      }
+
+      /* --- ANIMATIONS --- */
+      @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.6; }
+      }
+
+      @keyframes pulse-dot {
+        0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.7); }
+        70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(76, 175, 80, 0); }
+        100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(76, 175, 80, 0); }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1><i class="fa-solid fa-fire-burner"></i> Kitchen Display</h1>
+      <div class="header-right">
+        <div class="live-indicator">
+          <div class="pulse-dot"></div>
+          LIVE
+        </div>
+        <div id="liveClock">00:00:00</div>
+      </div>
+    </header>
+
+    <div class="container">
+      <div class="section-title">Active Orders (Preparing)</div>
+      <div class="orders-grid" id="ordersGrid"></div>
+    </div>
+
+    <script>
+      // Live Clock Logic
+      function updateClock() {
+        const now = new Date();
+        const timeString = now.toLocaleTimeString('en-US', { hour12: false });
+        document.getElementById('liveClock').textContent = timeString;
+      }
+      setInterval(updateClock, 1000);
+      updateClock();
+
+      // Firebase Config
+      const firebaseConfig = {
+        apiKey: "AIzaSyCD0BToDMJREYOlTSpxNihP__c4uC0tvnY",
+        projectId: "campusserve-5f138",
+        appId: "1:169392088588:web:6af9c03ce5c02fa4433029",
+      };
+      firebase.initializeApp(firebaseConfig);
+      const db = firebase.firestore();
+
+      // Listen for Orders
+      db.collection("orders")
+        .where("status", "==", "Preparing")
+        .onSnapshot((snap) => {
+          const grid = document.getElementById("ordersGrid");
+          grid.innerHTML = "";
+
+          if (snap.empty) {
+            grid.innerHTML = `
+              <div class="empty-state">
+                <i class="fa-solid fa-mug-hot"></i>
+                <h3>Kitchen is Clear</h3>
+                <p style="color: var(--text-muted); font-weight: 500; margin-top: 8px;">Waiting for new orders to arrive.</p>
+              </div>
+            `;
+            return;
+          }
+
+          snap.forEach((doc) => {
+            const data = doc.data();
+            const id = doc.id;
+            const est = data.totalPrepTime || 15;
+
+            const card = document.createElement("div");
+            card.className = "order-card";
+            card.id = `card-${id}`; // ID added to target entire card for border change
+
+            card.innerHTML = `
+                <div class="card-header">
+                    <div class="token-wrapper">
+                        <span class="token-label">Token No.</span>
+                        <div class="token-num">${data.tokenNumber}</div>
+                    </div>
+                    <div class="timer-badge" id="timer-${id}">
+                       <i class="fa-regular fa-clock" style="font-size: 0.9rem;"></i> --:--
+                    </div>
+                </div>
+                <div class="items-container">
+                    ${(data.items || []).map((i) => `
+                      <div class="item-row">
+                        <span>${i.title}</span> 
+                        <span class="qty-badge">x${i.quantity}</span>
+                      </div>
+                    `).join("")}
+                </div>
+                <button class="btn-ready" onclick="markReady('${id}')">
+                   <i class="fa-solid fa-check"></i> Mark Ready
+                </button>
+            `;
+            grid.appendChild(card);
+
+            startCardTimer(id, data.timestamp, est, data.overdue);
+          });
+        });
+
+      function startCardTimer(id, firestoreTimestamp, estMinutes, isAlreadyOverdue) {
+        const start = firestoreTimestamp ? firestoreTimestamp.toDate().getTime() : Date.now();
+        const totalMs = estMinutes * 60000;
+
+        const interval = setInterval(() => {
+          const el = document.getElementById(`timer-${id}`);
+          const cardEl = document.getElementById(`card-${id}`);
+          
+          if (!el || !cardEl) {
+            clearInterval(interval);
+            return;
+          }
+
+          const now = Date.now();
+          const diff = totalMs - (now - start);
+
+          if (diff <= 0) {
+            el.innerHTML = '<i class="fa-solid fa-triangle-exclamation" style="font-size: 0.9rem;"></i> OVERDUE';
+            el.classList.add("overdue");
+            cardEl.classList.add("is-overdue"); // Changes top border to Red
+
+            if (!isAlreadyOverdue) {
+              db.collection("orders").doc(id).update({ overdue: true });
+              isAlreadyOverdue = true;
+            }
+          } else {
+            const m = Math.floor(diff / 60000);
+            const s = Math.floor((diff % 60000) / 1000);
+            el.innerHTML = `<i class="fa-regular fa-clock" style="font-size: 0.9rem;"></i> ${m}:${s < 10 ? "0" : ""}${s}`;
+            el.classList.remove("overdue");
+            cardEl.classList.remove("is-overdue");
+          }
+        }, 1000);
+      }
+
+      function markReady(id) {
+        if (confirm("Are you sure you want to mark this order as Ready?")) {
+          db.collection("orders").doc(id).update({
+            status: "Ready",
+            overdue: false,
+          });
+        }
+      }
+    </script>
+  </body>
+</html> 

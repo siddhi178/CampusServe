@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Notifications - CampusServe</title>
+    
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --bg-color: #f8f9fa;    
+            --primary-green: #1A6922;
+            --light-green: #e8f5e9;
+            --text-dark: #2d3436;
+            --card-radius: 16px;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Outfit', sans-serif; }
+        body { display: flex; height: 100vh; background-color: var(--bg-color); overflow: hidden; color: var(--text-dark); }
+
+        /* SIDEBAR (Preserved) */
+        .sidebar { width: 250px; background-color: #e7f3eb; padding: 20px; display: flex; flex-direction: column; border-right: 1px solid #dcdcdc; flex-shrink: 0; }
+        .logo { color: #007e00; font-size: 1.5rem; font-weight: bold; margin-bottom: 40px; text-align: center; }
+        .nav-links { list-style: none; }
+        .nav-links li { margin-bottom: 15px; }
+        .nav-links a { text-decoration: none; color: #333; font-size: 1rem; font-weight: 500; display: block; padding: 10px 15px; border-radius: 16px; transition: 0.3s; }
+        .nav-links a:hover { background-color: #c8e6c9; }
+        .nav-links a.active { background-color: #fff; color: #016301; font-weight: bold; }
+
+        /* MAIN CONTENT */
+        .main-content { flex: 1; padding: 30px 40px; overflow-y: auto; display: flex; flex-direction: column; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
+        .header h2 { font-size: 1.8rem; font-weight: 700; color: var(--primary-green); }
+
+        .btn-clear { padding: 10px 20px; background: #fff; border: 1px solid #ff5252; color: #ff5252; border-radius: 12px; cursor: pointer; font-weight: 600; transition: 0.2s; }
+        .btn-clear:hover { background: #ff5252; color: #fff; }
+
+        /* NOTIFICATION CARDS */
+        .notif-list { display: flex; flex-direction: column; gap: 15px; }
+        .notif-card { 
+            background: #fff; 
+            padding: 20px; 
+            border-radius: var(--card-radius); 
+            display: flex; 
+            align-items: center; 
+            gap: 20px; 
+            border: 1px solid #eee; 
+            transition: 0.3s;
+            position: relative;
+        }
+        .notif-card.unread { border-left: 5px solid var(--primary-green); background: #f0fdf4; }
+        .notif-card:hover { transform: translateX(5px); box-shadow: 0 5px 15px rgba(0,0,0,0.05); }
+
+        .notif-icon { 
+            width: 50px; height: 50px; border-radius: 12px; 
+            display: flex; align-items: center; justify-content: center; 
+            font-size: 1.4rem; flex-shrink: 0;
+        }
+        .icon-new { background: #e0f2fe; color: #0ea5e9; }
+        .icon-extend { background: #f3e8ff; color: #a855f7; }
+        .icon-reschedule { background: #fef3c7; color: #f59e0b; }
+        .icon-cancel { background: #ffe4e6; color: #fb7185; }
+
+        .notif-info { flex: 1; }
+        .notif-info h4 { font-size: 1.1rem; margin-bottom: 4px; }
+        .notif-info p { font-size: 0.9rem; color: #636e72; }
+        .notif-time { font-size: 0.8rem; color: #b2bec3; white-space: nowrap; }
+
+        .empty-state { text-align: center; margin-top: 100px; color: #aaa; }
+        .empty-state i { font-size: 4rem; margin-bottom: 10px; }
+    </style>
+</head>
+<body>
+
+    <aside class="sidebar">
+        <div class="logo">CampusServe<br>Canteen</div>
+        <ul class="nav-links">
+            <li><a href="2dashboard.html">Dashboard</a></li>
+            <li><a href="3order_management.html">Orders</a></li>
+            <li><a href="4menu_management.html">Menu Management</a></li>
+            <li><a href="13transaction.html">Transactions</a></li>
+            <li><a href="6users.html">Users</a></li>
+            <li><a href="5analytics.html">Analytics</a></li>
+            <li><a href="11announcement.html">Announcements</a></li>
+                    <li><a href="15deals.html">Combo / Deals</a></li>
+            <li><a href="9settings.html">Settings</a></li>
+        </ul>
+    </aside>
+
+    <main class="main-content">
+        <div class="header">
+            <h2>Notifications</h2>
+            <button class="btn-clear" onclick="clearAll()">Clear All</button>
+        </div>
+
+        <div id="notif-container" class="notif-list">
+            <!-- Notifications will appear here -->
+            <div class="empty-state">
+                <i class="fas fa-bell-slash"></i>
+                <p>No notifications yet.</p>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyCD0BToDMJREYOlTSpxNihP__c4uC0tvnY",
+            projectId: "campusserve-5f138",
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        function initNotifications() {
+            db.collection("admin_notifications")
+              .orderBy("timestamp", "desc")
+              .onSnapshot(snapshot => {
+                const container = document.getElementById("notif-container");
+                if (snapshot.empty) {
+                    container.innerHTML = '<div class="empty-state"><i class="fas fa-bell-slash"></i><p>No notifications yet.</p></div>';
+                    return;
+                }
+
+                container.innerHTML = "";
+                snapshot.forEach(doc => {
+                    const n = doc.data();
+                    const id = doc.id;
+                    const time = n.timestamp ? new Date(n.timestamp.seconds * 1000).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : "Just now";
+                    
+                    let iconClass = "icon-new";
+                    let iconPath = "fa-shopping-cart";
+                    
+                    if(n.type === 'extended') { iconClass = "icon-extend"; iconPath = "fa-clock-rotate-left"; }
+                    if(n.type === 'rescheduled') { iconClass = "icon-reschedule"; iconPath = "fa-calendar-alt"; }
+                    if(n.type === 'cancelled') { iconClass = "icon-cancel"; iconPath = "fa-xmark-circle"; }
+
+                    container.innerHTML += `
+                        <div class="notif-card ${n.isRead ? '' : 'unread'}" onclick="markRead('${id}')">
+                            <div class="notif-icon ${iconClass}">
+                                <i class="fas ${iconPath}"></i>
+                            </div>
+                            <div class="notif-info">
+                                <h4>${n.title}</h4>
+                                <p>${n.message}</p>
+                            </div>
+                            <div class="notif-time">${time}</div>
+                        </div>
+                    `;
+                });
+            });
+        }
+
+        async function markRead(id) {
+            await db.collection("admin_notifications").doc(id).update({ isRead: true });
+        }
+
+        async function clearAll() {
+            if(!confirm("Are you sure you want to clear all notifications?")) return;
+            const batch = db.batch();
+            const snap = await db.collection("admin_notifications").get();
+            snap.docs.forEach(doc => batch.delete(doc.ref));
+            await batch.commit();
+        }
+
+        initNotifications();
+    </script>
+</body>
+</html>

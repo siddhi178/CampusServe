@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Orders - CampusServe</title>
+    
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">    
+    <style>
+        :root {
+            --theme-dark: #1A6922;      
+            --theme-medium: #A3CCA3;    
+            --theme-pale: #C1E1CA;      
+            --panel-bg: #ecf7f0; 
+            --bg-color: #f4f7f6;
+            --text-dark: #1A6922;       
+
+            --blue-border: #2196f3;
+            --orange-border: #ff9800;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Poppins', sans-serif; -webkit-user-select: none; user-select: none; }
+        input { -webkit-user-select: text !important; user-select: text !important; cursor: text; }
+        body { display: flex; height: 100vh; background-color: var(--bg-color); overflow: hidden; font-size: 14px; color: var(--text-dark); } 
+
+        .sidebar { width: 250px; background-color: #e7f3eb; padding: 20px; display: flex; flex-direction: column; border-right: 1px solid #dcdcdc; }
+        .logo { color: #007e00; font-size: 1.5rem; font-weight: bold; margin-bottom: 40px; text-align: center; }
+        .nav-links { list-style: none; }
+        .nav-links li { margin-bottom: 15px; }
+        .nav-links a { text-decoration: none; color: var(--text-dark); font-size: 1rem; font-weight: 500; display: block; padding: 10px 15px; border-radius: 16px; transition: 0.3s; }
+        .nav-links a.active { background-color: #fff; color: #016301; font-size: 18px; font-weight: bold; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05); }
+        .nav-links a:hover { background-color: #c8e6c9; }
+
+        .main-content { flex: 1; padding: 25px 35px; overflow-y: hidden; display: flex; flex-direction: column; }
+        .top-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .search-box { background: #fff; padding: 10px 20px; border-radius: 30px; display: flex; width: 350px; border: 1px solid #dce9df; }
+        .search-box input { border: none; background: transparent; outline: none; width: 100%; margin-left: 12px; }
+        .user-actions { display: flex; gap: 15px; }
+        .notification { width: 45px; height: 45px; background: #fff; border-radius: 30%; display: flex; align-items: center; justify-content: center; border: 1px solid var(--theme-medium); cursor: pointer; }
+        .notification i { color: #FFD700; -webkit-text-stroke: 1px black; font-size: 1.2rem; }
+        
+        .filters-container { display: flex; justify-content: flex-end; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
+        .filter-pill { border: 1px solid transparent; background: #fff; padding: 8px 20px; border-radius: 30px; cursor: pointer; font-weight: 500; color: #666; font-size: 0.9rem; box-shadow: 0 2px 8px rgba(0,0,0,0.03); }
+        .filter-pill.active { background-color:#E7F3EB; color: #008100; border-color: #007e007c; font-weight: 600; }
+
+        .ready-section-title { color: #2e7d32; font-weight: 700; margin-bottom: 15px; font-size: 1.1rem; }
+        .ready-queue-container { display: flex; gap: 12px; overflow-x: auto; margin-bottom: 10px; min-height: 90px; }
+        .ready-token-card { background: #fff; border: 2px solid #a5d6a7; border-radius: 40px; cursor: pointer; display: flex; height: 65px; overflow: hidden; align-items: center; }
+        .ready-token-card .token-left { background: #e8f9e8; padding: 0 20px; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; }
+        .ready-token-card .token-left h3 { color: #2e7d32; font-size: 1.3rem; margin: 0; font-weight: 800; }
+        .ready-token-card .token-details { width: 0; opacity: 0; transition: 0.3s; padding: 0; overflow: hidden; display: flex; flex-direction: column; justify-content: center;}
+        .ready-token-card .token-action { width: 0; opacity: 0; transition: 0.3s; background: #e8f5e9; height: 100%; display: flex; align-items: center; justify-content: center; }
+        .ready-token-card.expanded { width: auto; border-color: #4caf50; }
+        .ready-token-card.expanded .token-left { background: #4caf50; }
+        .ready-token-card.expanded .token-left h3 { color: #fff; }
+        .ready-token-card.expanded .token-details { width: auto; opacity: 1; padding: 0 25px; }
+        .ready-token-card.expanded .token-action { width: 60px; opacity: 1; }
+
+        .orders-grid-wrapper { flex: 1; overflow-y: auto; padding-bottom: 20px; }
+        .orders-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; align-items: start; }
+        .column-container { background: #fff; border: 1px solid #e0e0e0; border-radius: 16px; padding: 20px; min-height: 500px; }
+        .column-header { font-size: 1.2rem; font-weight: 700; color: #2e7d32; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 2px solid #f0f0f0; display: flex; justify-content: space-between; }
+
+        @keyframes pulseGreen { 0% { box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.4); border-color: #4caf50; } 70% { box-shadow: 0 0 0 8px rgba(76, 175, 80, 0); border-color: #81c784; } 100% { box-shadow: 0 0 0 0 rgba(76, 175, 80, 0); border-color: #4caf50; } }
+        @keyframes pulseBlue { 0% { box-shadow: 0 0 0 0 rgba(33, 150, 243, 0.4); border-color: #2196f3; } 70% { box-shadow: 0 0 0 8px rgba(33, 150, 243, 0); border-color: #90caf9; } 100% { box-shadow: 0 0 0 0 rgba(33, 150, 243, 0); border-color: #2196f3; } }
+        @keyframes pulseRed { 0% { box-shadow: 0 0 0 0 rgba(244, 67, 54, 0.4); border-color: #f44336; } 70% { box-shadow: 0 0 0 8px rgba(244, 67, 54, 0); border-color: #e57373; } 100% { box-shadow: 0 0 0 0 rgba(244, 67, 54, 0); border-color: #f44336; } }
+        
+        .order-card { background: #fff; border-radius: 16px; border: 1px solid #eee; margin-bottom: 15px; transition: all 0.3s ease; overflow: hidden; position: relative; }
+        .order-card:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(0,0,0,0.05); }
+        
+        .order-card.new-order { animation: pulseGreen 2s infinite; background-color: #f1f8e9; border: 2px solid #4caf50; }
+        .order-card.rescheduled-card { animation: pulseBlue 2s infinite; background-color: #f0f8ff; border: 2px solid #2196f3; }
+        .order-card.refund-card { border: 2px solid var(--orange-border); box-shadow: 0 0 8px rgba(255,152,0,0.2); }
+        .order-card.overdue-order { animation: pulseRed 2s infinite !important; background-color: #fff5f5 !important; border: 2px solid #f44336 !important; }
+
+        .card-header { padding: 18px; display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 1px dashed #eee; cursor: pointer; }
+        .header-left { display: flex; align-items: flex-start; gap: 15px; flex: 1; }
+        .token-badge { background: #2e7d32; color: #fff; padding: 10px 18px; border-radius: 12px; font-weight: 800; font-size: 1.4rem; flex-shrink: 0; box-shadow: 0 4px 10px rgba(46, 125, 50, 0.2); }
+        
+        .user-info { display: flex; flex-direction: column; gap: 4px; width: 100%; }
+        .user-name { font-weight: 700; font-size: 1.15rem; color: #222; display: flex; align-items: center; flex-wrap: wrap; }
+        .order-time-inline { font-size: 0.85rem; color: #888; font-weight: 500; margin-left: 10px; display: inline-flex; align-items: center; gap: 5px;}
+        
+        .tags-column { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; align-items: flex-start; }
+        .status-badge { font-size: 11px; padding: 5px 10px; border-radius: 6px; font-weight: 600; display: inline-flex; align-items: center; gap: 5px; text-transform: uppercase; letter-spacing: 0.3px; }
+        
+        .status-badge.preparing { background-color: #fff9c4; color: #f57f17; border: 1px solid #fff59d; } 
+        .status-badge.rescheduled { background-color: #e3f2fd; color: #1565c0; border: 1px solid #90caf9; } 
+        .status-badge.extended { background-color: #f3e5f5; color: #7b1fa2; border: 1px solid #ce93d8; } 
+        .status-badge.pending { background-color: #fff3e0; color: #e65100; border: 1px solid #ffe0b2; } 
+        .status-badge.refund { background-color: #ffe0b2; color: #e65100; border: 1px solid #ffcc80; } 
+        .status-badge.overdue { background-color: #ffebee; color: #c62828; border: 1px solid #ef9a9a; } 
+
+        .status-actions { display: flex; gap: 8px; align-items: center; flex-shrink: 0; }
+        .btn { padding: 10px 16px; border-radius: 10px; font-weight: 600; font-size: 0.9rem; cursor: pointer; border: 1px solid transparent; background: #fff; transition: 0.2s;}
+        .btn:hover { transform: translateY(-2px); }
+        .btn-confirm { border-color: #2e7d32; color: #2e7d32; background: #e8f5e9;}
+        .btn-reject { border-color: #c62828; color: #c62828; background: #ffebee;}
+        .btn-ready { border-color: #ef6c00; color: #ef6c00; background: #fff3e0; box-shadow: 0 4px 10px rgba(239, 108, 0, 0.15);}
+        .action-trigger-btn { border: 1px solid #ccc; color: #555; background: #fafafa; padding: 8px 12px; border-radius: 10px;}
+        .action-trigger-btn:hover { border-color: var(--theme-dark); color: var(--theme-dark); background: var(--theme-pale); }
+
+        .card-details { padding: 18px; display: none; background: #fdfdfd; border-top: 1px solid #eee; }
+        .item-row { display: flex; justify-content: space-between; font-size: 1rem; margin-bottom: 10px; color: #444; font-weight: 500;}
+        .total-row { border-top: 1px dashed #ccc; padding-top: 12px; margin-top: 12px; font-weight: 800; display: flex; justify-content: space-between; font-size: 1.15rem; color: #111; }
+
+        .toast-banner { position: fixed; top: -100px; left: 50%; transform: translateX(-50%); background: #fff; border-left: 6px solid #2e7d32; box-shadow: 0 10px 40px rgba(0,0,0,0.15); padding: 15px 25px; border-radius: 12px; display: flex; align-items: center; gap: 15px; z-index: 9999; transition: top 0.5s ease; min-width: 300px; }
+        .toast-banner.show { top: 30px; }
+        .toast-icon { background: #e8f5e9; color: #2e7d32; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; }
+        .toast-text h4 { margin: 0; color: #2e7d32; font-size: 1rem; font-weight: 700; }
+        .toast-text p { margin: 0; color: #666; font-size: 0.85rem; }
+
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); z-index: 3000; justify-content: center; align-items: center; backdrop-filter: blur(4px); }
+        .modal-box { background: #fff; padding: 30px; border-radius: 20px; width: 400px; box-shadow: 0 15px 50px rgba(0,0,0,0.2); animation: popUp 0.3s ease; }
+        @keyframes popUp { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+        .modal-header { font-size: 1.2rem; font-weight: 700; color: var(--theme-dark); margin-bottom: 20px; text-align: center; }
+        .action-section { margin-bottom: 25px; }
+        .section-lbl { font-size: 0.85rem; font-weight: 700; color: #888; text-transform: uppercase; margin-bottom: 10px; display: block; }
+        .btn-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .opt-btn { padding: 12px; border: 1px solid #ddd; background: #f9f9f9; border-radius: 12px; cursor: pointer; font-weight: 600; font-size: 0.9rem; transition: 0.2s; }
+        .opt-btn:hover { background: var(--theme-pale); border-color: var(--theme-dark); color: var(--theme-dark); }
+        .manual-row { margin-top: 10px; display: flex; gap: 10px; }
+        .manual-input { flex: 1; padding: 10px; border-radius: 8px; border: 1px solid #ddd; outline: none; }
+    </style>
+</head>
+<body>
+
+    <div id="toastBanner" class="toast-banner">
+        <div class="toast-icon"><i class="fas fa-bell"></i></div>
+        <div class="toast-text">
+            <h4 id="toastTitle">New Order</h4>
+            <p id="toastMessage">Token T-XX has arrived.</p>
+        </div>
+    </div>
+
+    <aside class="sidebar">
+        <div class="logo">CampusServe<br>Canteen</div>
+        <ul class="nav-links">
+            <li><a href="2dashboard.html">Dashboard</a></li>
+            <li><a href="3order_management.html" class="active">Orders</a></li>
+            <li><a href="4menu_management.html">Menu Management</a></li>
+            <li><a href="13transaction.html">Transactions</a></li>
+            <li><a href="6users.html">Users</a></li>
+            <li><a href="5analytics.html">Analytics</a></li>
+            <li><a href="11announcement.html">Announcements</a></li>
+                    <li><a href="15deals.html">Combo / Deals</a></li>
+
+            <li><a href="9settings.html">Settings</a></li>
+        </ul>
+    </aside>
+
+    <main class="main-content">
+        <div class="top-bar">
+            <div class="search-box">
+                <i class="fas fa-search" style="color:#aaa;"></i>
+                <input type="text" id="searchInput" placeholder="Search Order ID or Token..." onkeyup="searchOrders()">
+            </div>
+            <div class="user-actions">
+                <div class="notification" onclick="window.location.href='14notification.html'"><i class="fa-solid fa-bell"></i></div>
+            </div>
+        </div>
+
+        <div class="filters-container">
+            <div class="filter-pill active" onclick="filterOrders('active', this)">Active Orders</div>
+            <div class="filter-pill" onclick="filterOrders('cash', this)">Cash Pending</div>
+            <div class="filter-pill" onclick="filterOrders('preparing', this)">In-Kitchen</div>
+            <div class="filter-pill" onclick="filterOrders('rescheduled', this)">Rescheduled</div>
+            <div class="filter-pill" onclick="filterOrders('extended', this)">Extended Wait</div>
+            <div class="filter-pill" onclick="filterOrders('refunded', this)">Refund orders</div>
+            <div class="filter-pill" onclick="filterOrders('ready', this)">Ready</div>
+            <div class="filter-pill" onclick="filterOrders('completed', this)" style="border-left: 2px solid #eee; border-radius: 0 30px 30px 0;">Completed</div>
+            <div class="filter-pill" onclick="filterOrders('cancelled', this)">Cancelled</div>
+        </div>
+
+        <h4 class="ready-section-title">Ready for Pickup</h4>
+        <div class="ready-queue-container" id="readyQueue"></div>
+
+        <div class="orders-grid-wrapper">
+            <div class="orders-grid" id="mainOrdersGrid">
+                <div class="column-container">
+                    <div class="column-header">UPI / Online Orders</div>
+                    <div id="col-upi"></div>
+                </div>
+
+                <div class="column-container">
+                    <div class="column-header">Cash Orders</div>
+                    <div id="col-cash"></div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+<script>
+const firebaseConfig = {
+    apiKey: "AIzaSyCD0BToDMJREYOlTSpxNihP__c4uC0tvnY",
+    authDomain: "campusserve-5f138.firebaseapp.com",
+    projectId: "campusserve-5f138"
+};
+if (!firebase.apps.length) {
+    firebase.initializeApp(firebaseConfig);
+}
+const db = firebase.firestore();
+
+document.addEventListener('click', () => {
+    const audio = new Audio(); 
+    audio.play().catch(() => {}); 
+}, { once: true });
+
+let lastOrderCount = -1;
+let isInitialOrderLoad = true;
+let knownOrderIds = new Set();
+
+function playNotificationSound() {
+    const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
+    audio.play().catch(e => console.log("Sound blocked by browser"));
+}
+
+function showBannerNotification(title, message) {
+    const banner = document.getElementById('toastBanner');
+    document.getElementById('toastTitle').innerText = title;
+    document.getElementById('toastMessage').innerText = message;
+    
+    banner.classList.add('show');
+    setTimeout(() => { banner.classList.remove('show'); }, 10000);
+}
+
+const now = new Date();
+const startOfCurrentMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+function getOrderDate(orderData) {
+    const ts = orderData.orderTime || orderData.createdAt || orderData.timestamp;
+    if (!ts) return new Date(0); 
+    return ts.toDate ? ts.toDate() : new Date(ts);
+}
+
+let currentActiveTab = 'active';
+
+setInterval(() => {
+    document.querySelectorAll('.order-card[data-status="preparing"]').forEach(card => {
+        const startTsStr = card.dataset.startTime;
+        const prepTimeStr = card.dataset.prepTime;
+        
+        if (startTsStr && prepTimeStr) {
+            const startTs = parseInt(startTsStr);
+            const prepMins = parseInt(prepTimeStr);
+            const diffMs = Date.now() - startTs;
+            
+            if (diffMs > (prepMins * 60000)) {
+                let delMins = Math.floor((diffMs - (prepMins * 60000)) / 60000);
+                if(!card.classList.contains("overdue-order")) {
+                    card.classList.add("overdue-order");
+                    const tagsCol = card.querySelector('.tags-column');
+                    if(tagsCol && !tagsCol.innerHTML.includes("OVERDUE")) {
+                        tagsCol.innerHTML += `<span class="status-badge overdue" id="tag-${card.id}"><i class="fas fa-exclamation-circle"></i> DELAYED BY ${delMins}m</span>`;
+                    }
+                } else {
+                    const tag = document.getElementById(`tag-${card.id}`);
+                    if(tag) tag.innerHTML = `<i class="fas fa-exclamation-circle"></i> DELAYED BY ${delMins}m`;
+                }
+            } else {
+                if(card.classList.contains("overdue-order")) {
+                    card.classList.remove("overdue-order");
+                    const tagToRemove = document.getElementById(`tag-${card.id}`);
+                    if(tagToRemove) tagToRemove.remove();
+                }
+            }
+        }
+    });
+}, 1000);
+
+db.collection("orders").onSnapshot(snap => {
+    let allOrders = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    allOrders = allOrders.filter(order => getOrderDate(order) >= startOfCurrentMonth);
+    allOrders.sort((a, b) => getOrderDate(b) - getOrderDate(a));
+
+    document.getElementById('col-upi').innerHTML = "";
+    document.getElementById('col-cash').innerHTML = "";
+    document.getElementById('readyQueue').innerHTML = "";
+
+    allOrders.forEach(order => {
+        let isBrandNew = false;
+        if (!isInitialOrderLoad && !knownOrderIds.has(order.id)) {
+            isBrandNew = true;
+            playNotificationSound();
+            showBannerNotification(`New Order (Token: ${order.tokenNumber})`, `${order.userName || 'Student'} just placed an order!`);
+        }
+        knownOrderIds.add(order.id);
+
+        renderCard(order, order.id, isBrandNew);
+        if (order.status === "Ready") renderReadyCard(order, order.id);
+    });
+
+    isInitialOrderLoad = false;
+});
+
+function renderCard(order, id, isBrandNew) {
+    const method = (order.paymentType || order.paymentMethod || "").toLowerCase();
+    const isUPI = method.includes('upi') || method.includes('online') || method.includes('razorpay') || method.includes('wallet');
+
+    let containerId = isUPI ? "col-upi" : "col-cash";
+    if (order.status === "Pending Payment" || order.status.includes("Cash Refund") || order.status.includes("Verify")) {
+        containerId = "col-cash";
+    }
+
+    const container = document.getElementById(containerId);
+    const card = document.createElement("div");
+    card.className = "order-card";
+    card.id = id;
+
+    const startField = order.prepStartTime || order.timestamp || order.originalOrderTime;
+    const startTs = startField ? (startField.toDate ? startField.toDate().getTime() : new Date(startField).getTime()) : Date.now();
+    const pTime = order.totalPrepTime || 15;
+
+    let isLocalOverdue = false;
+    let delayedMins = 0;
+    if (order.status === 'Preparing') {
+        const diffMs = Date.now() - startTs;
+        if (diffMs > (pTime * 60000)) {
+            isLocalOverdue = true;
+            delayedMins = Math.floor((diffMs - (pTime * 60000)) / 60000);
+        }
+    }
+
+    if (isBrandNew) card.classList.add("new-order"); 
+    else if (isLocalOverdue) card.classList.add("overdue-order"); 
+    else if (order.status === "Rescheduled") card.classList.add("rescheduled-card"); 
+    else if (order.status.includes("Refund") || order.status.includes("Verify")) card.classList.add("refund-card"); 
+    
+    container.appendChild(card);
+
+    const cleanStatus = order.status.toLowerCase().replace(/\s+/g, "");
+    card.dataset.status = cleanStatus;
+    card.dataset.isExtended = order.isExtended ? "true" : "false";
+    card.dataset.isRefunding = (order.status.includes("Refund") || order.status.includes("Verify") || cleanStatus === "refunddisputed") ? "true" : "false";
+    
+    card.dataset.startTime = startTs;
+    card.dataset.prepTime = pTime;
+
+    card.style.display = shouldShowLocally(order, cleanStatus) ? 'block' : 'none';
+
+    let headerButtons = "";
+    let badgeText = order.status;
+    let badgeStyle = cleanStatus;
+    
+    if (order.status === "Preparing") {
+        badgeStyle = "preparing"; 
+        badgeText = "Total Est: ${pTime} mins"; 
+    }
+    if (order.status.includes("Refund") || order.status.includes("Verify")) badgeStyle = "refund"; 
+
+    if (order.status === "Pending Payment") {
+        headerButtons = `
+            <button class="btn btn-confirm" onclick="event.stopPropagation(); updateStatus('${id}', 'Preparing', true)"><i class="fas fa-check"></i> Confirm</button>
+            <button class="btn btn-reject" onclick="event.stopPropagation(); updateStatus('${id}', 'Cancelled')"><i class="fas fa-times"></i> Reject</button>`;
+    } 
+    else if (order.status === "Wallet Refund Requested") {
+        badgeText = "Wallet Refund Requested"; 
+        headerButtons = `<button class="btn" style="background:#e8f5e9; color:#2e7d32; border:1px solid #4caf50;" 
+            onclick="event.stopPropagation(); processWalletRefund('${order.userId}', ${order.totalAmount}, '${id}')"><i class="fas fa-wallet"></i> Refund Wallet</button>`;
+    }
+    else if (order.status === "Cash Refund Requested") {
+        badgeText = "User Requested Cash Refund"; 
+        // THIS IS THE BUTTON ADMIN PRESSES AFTER HANDING OVER CASH
+        headerButtons = `<button class="btn" style="background:#fff3e0; color:#e65100; border:1px solid #ff9800; width:100%;" 
+            onclick="event.stopPropagation(); initiateVerification('${id}', 'Cash Refunded - Verify')"><i class="fas fa-hand-holding-usd"></i> Hand Over Cash & Verify</button>`;
+    }
+    else if (order.status === "Refund Disputed") {
+        badgeStyle = "refund"; 
+        headerButtons = `<button class="btn" style="width:100%; background:#ffebee; border:1px solid #d32f2f; color:#d32f2f; font-weight:800;" 
+            title="User denied receiving this refund"><i class="fas fa-exclamation-triangle"></i> DISPUTED</button>`;
+    }
+    else if (order.status.includes("- Verify")) {
+        headerButtons = `<button class="btn" style="background:#f5f5f5; color:#888; border:1px dashed #ccc; width:100%;" disabled>Waiting for User to Verify Receipt</button>`;
+    }
+    else if (order.status === "Completed") {
+        headerButtons = `<button class="btn btn-done" style="width:100%; color:#4caf50; border:1px solid #4caf50; background:transparent;" disabled>Picked Up</button>`;
+    }
+    else if (order.status === "Cancelled" || order.status === "Refunded") {
+        headerButtons = `<button class="btn" style="width:100%; color:#ff5252; border:1px solid #ff5252; background:transparent;" disabled>Cancelled</button>`;
+    }
+    else if (order.status === "Ready") {
+        headerButtons = `<button class="btn" style="border:1px solid #ccc; color:#888; background:#fafafa;" disabled>Ready</button>`;
+    }
+    else {
+        let isLocked = false;
+        if (order.status === "Rescheduled" && order.scheduledTimestamp) {
+            if(new Date() < order.scheduledTimestamp.toDate()) isLocked = true;
+        }
+
+        headerButtons = `
+            <button class="btn action-trigger-btn" onclick="event.stopPropagation(); openActionModal('${id}', '${order.tokenNumber}')"><i class="fas fa-cog"></i></button>
+            <button class="btn btn-ready" ${isLocked ? 'disabled style="opacity:0.4; cursor:not-allowed;"' : ''} onclick="event.stopPropagation(); updateStatus('${id}', 'Ready')">Mark Ready</button>
+        `;
+    }
+
+    const tsDate = getOrderDate(order);
+    let timeStr = tsDate.toLocaleString([], { day:'numeric', month:'short', hour: '2-digit', minute:'2-digit' });
+
+    let tagsHtml = `<span class="status-badge ${badgeStyle}">${badgeText.replace('${pTime}', pTime)}</span>`;
+    
+    if (isLocalOverdue) {
+        tagsHtml += `<span class="status-badge overdue" id="tag-${id}"><i class="fas fa-exclamation-circle"></i> DELAYED BY ${delayedMins}m</span>`;
+    }
+
+    if (order.wasRescheduled) {
+        if (order.rescheduleHistory && order.rescheduleHistory.length > 0) {
+            order.rescheduleHistory.forEach((resch) => {
+                tagsHtml += `<span class="status-badge rescheduled"><i class="fas fa-calendar-check"></i> ${resch}</span>`;
+            });
+        } else if (order.scheduledSlot) {
+            tagsHtml += `<span class="status-badge rescheduled"><i class="fas fa-calendar-check"></i> Rescheduled to: ${order.scheduledSlot}</span>`;
+        }
+    }
+
+    if (order.isExtended) {
+        if (order.extensionHistory && order.extensionHistory.length > 0) {
+            order.extensionHistory.forEach((ext) => {
+                tagsHtml += `<span class="status-badge extended"><i class="fas fa-plus-circle"></i> ${ext}</span>`;
+            });
+        } else if (order.extensionInfo) {
+            tagsHtml += `<span class="status-badge extended"><i class="fas fa-plus-circle"></i> ${order.extensionInfo}</span>`;
+        }
+    }
+
+    card.innerHTML = `
+        <div class="card-header" onclick="toggleDetails('${id}')">
+            <div class="header-left">
+                <div class="token-badge" style="${order.status.includes('Refund') || order.status.includes('Verify') ? 'background:#ff9800;' : ''}">${order.tokenNumber}</div>
+                <div class="user-info">
+                    <div class="user-name">
+                        ${order.userName || 'Student'} 
+                        <span class="order-time-inline"><i class="far fa-clock"></i> ${timeStr}</span>
+                    </div>
+                    <div class="tags-column">
+                        ${tagsHtml}
+                    </div>
+                </div>
+            </div>
+            <div class="status-actions">${headerButtons}</div>
+        </div>
+        <div class="card-details" id="detail-${id}">
+            ${(order.items || []).map(i => `<div class="item-row"><span>${i.title || i.name}</span> <b>x${i.quantity}</b></div>`).join('')}
+            <div class="total-row"><span>Total</span> <span>₹${order.totalAmount}</span></div>
+        </div>`;
+}
+
+function shouldShowLocally(order, cleanStatus) {
+    const isFinished = (cleanStatus === 'completed' || cleanStatus === 'cancelled' || cleanStatus === 'refunded');
+    const isReady = (cleanStatus === 'ready');
+    const isRefunding = order.status.includes("Refund") || order.status.includes("Verify");
+
+    if (currentActiveTab === 'active') return !isFinished && !isReady && !isRefunding; 
+
+    if (currentActiveTab === 'cash') return cleanStatus === 'pendingpayment'; 
+    if (currentActiveTab === 'preparing') return (cleanStatus === 'preparing' || order.isExtended) && !isFinished && !isReady && !isRefunding;
+    if (currentActiveTab === 'rescheduled') return cleanStatus === 'rescheduled' && !isFinished;
+    if (currentActiveTab === 'extended') return order.isExtended === true && !isFinished && !isReady && !isRefunding;
+    if (currentActiveTab === 'refunded') return isRefunding;
+    if (currentActiveTab === 'ready') return isReady;
+    if (currentActiveTab === 'cancelled') return cleanStatus === 'cancelled';
+    if (currentActiveTab === 'completed') return cleanStatus === 'completed';
+
+    return false;
+}
+
+function filterOrders(type, btn) {
+    currentActiveTab = type; 
+    document.querySelectorAll(".filter-pill").forEach(p => p.classList.remove("active"));
+    btn.classList.add("active");
+    
+    document.querySelectorAll(".order-card").forEach(card => {
+        const status = card.dataset.status;
+        const isExtended = card.dataset.isExtended === "true";
+        const isRefunding = card.dataset.isRefunding === "true";
+        const isFinished = (status === 'completed' || status === 'cancelled' || status === 'refunded');
+        const isReady = (status === 'ready');
+
+        let show = false;
+        if (type === 'active') show = !isFinished && !isReady && !isRefunding; 
+        else if (type === 'cash') show = (status === 'pendingpayment');
+        else if (type === 'preparing') show = (status === 'preparing' || isExtended) && !isFinished && !isReady && !isRefunding;
+        else if (type === 'rescheduled') show = (status === 'rescheduled' && !isFinished);
+        else if (type === 'extended') show = (isExtended === true && !isFinished && !isReady && !isRefunding);
+        else if (type === 'refunded') show = isRefunding;
+        else if (type === 'ready') show = isReady;
+        else if (type === 'cancelled') show = (status === 'cancelled');
+        else if (type === 'completed') show = (status === 'completed');
+
+        card.style.display = show ? 'block' : 'none';
+    });
+}
+
+async function processWalletRefund(userId, amount, orderId) {
+    if (!confirm(`Refund needs to go to wallet. Proceed to refund ₹${amount}?`)) return;
+    try {
+        const userRef = db.collection("users").doc(userId);
+        await db.runTransaction(async (transaction) => {
+            const userDoc = await transaction.get(userRef);
+            const bal = parseFloat(userDoc.data().wallet_balance || 0);
+            transaction.update(userRef, { wallet_balance: bal + parseFloat(amount) });
+            transaction.update(db.collection("orders").doc(orderId), { status: 'Wallet Refunded - Verify' });
+        });
+        alert(`₹${amount} added to user wallet refund successfully.`);
+    } catch (e) { alert("Refund Error: " + e.message); }
+}
+
+async function initiateVerification(orderId, status) {
+    if (!confirm("Did you physically hand over the cash to the student? If yes, confirm to send a verification prompt to their app.")) return;
+    await db.collection("orders").doc(orderId).update({ 
+        status: status,
+        adminConfirmedAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+}
+
+async function updateStatus(id, status, isPaid = null) {
+    const data = { status: status };
+    if (isPaid !== null) data.isPaid = isPaid;
+    if (status === 'Preparing') data.prepStartTime = firebase.firestore.FieldValue.serverTimestamp();
+    await db.collection("orders").doc(id).update(data);
+}
+
+function renderReadyCard(order, id) {
+    const queue = document.getElementById("readyQueue");
+    const card = document.createElement("div");
+    card.className = "ready-token-card";
+    card.setAttribute('data-origin', id);
+    card.onclick = function() { toggleReadyCard(this); };
+    card.innerHTML = `<div class="token-left"><h3>${order.tokenNumber}</h3><i class="fas fa-check"></i></div>
+        <div class="token-details">${(order.items||[]).map(i=>`<div>${i.quantity}x ${i.title||i.name}</div>`).join('')}</div>
+        <div class="token-action" onclick="event.stopPropagation(); markAsCompleted(this)"><i class="fas fa-check-circle" style="color:#2e7d32; font-size:24px;"></i></div>`;
+    queue.appendChild(card);
+}
+
+async function markAsCompleted(btnElement) {
+    const id = btnElement.closest('.ready-token-card').getAttribute('data-origin');
+    await updateStatus(id, "Completed");
+}
+
+function toggleDetails(id) { 
+    const el = document.getElementById(`detail-${id}`); 
+    el.style.display = el.style.display === "block" ? "none" : "block"; 
+}
+
+function toggleReadyCard(el) { 
+    document.querySelectorAll('.ready-token-card').forEach(c => { if(c!==el) c.classList.remove('expanded') }); 
+    el.classList.toggle('expanded'); 
+}
+
+function searchOrders() { 
+    const term = document.getElementById("searchInput").value.toLowerCase(); 
+    document.querySelectorAll(".order-card").forEach(card => { 
+        card.style.display = card.innerText.toLowerCase().includes(term) ? 'block' : 'none'; 
+    }); 
+}
+
+let activeActionOrderId = null;
+
+function openActionModal(id, token) {
+    activeActionOrderId = id;
+    document.getElementById('targetToken').innerText = `(${token})`;
+    document.getElementById('adminActionModal').style.display = 'flex';
+    document.getElementById('manualInputRow').style.display = 'none';
+}
+
+function closeActionModal(e) {
+    if (e.target.id === 'adminActionModal') document.getElementById('adminActionModal').style.display = 'none';
+}
+
+function toggleManualInput() {
+    const row = document.getElementById('manualInputRow');
+    row.style.display = row.style.display === 'none' ? 'flex' : 'none';
+}
+
+async function handleExtend(mins) {
+    const timeNow = new Date().toLocaleTimeString([],{hour:'2-digit', minute:'2-digit'});
+    const extMsg = `+${mins}m at ${timeNow} (Admin)`; 
+
+    try {
+        const card = document.getElementById(activeActionOrderId);
+        let newTotalPrep = 15 + mins; 
+        
+        if (card && card.dataset.startTime && card.dataset.prepTime) {
+            const startTs = parseInt(card.dataset.startTime);
+            const currentPrep = parseInt(card.dataset.prepTime);
+            const elapsedMins = Math.floor((Date.now() - startTs) / 60000);
+            newTotalPrep = Math.max(currentPrep, elapsedMins) + mins;
+        }
+
+        await db.collection("orders").doc(activeActionOrderId).update({
+            isExtended: true,
+            totalPrepTime: newTotalPrep,
+            overdue: false, 
+            status: 'Preparing',
+            extensionHistory: firebase.firestore.FieldValue.arrayUnion(extMsg)
+        });
+        document.getElementById('adminActionModal').style.display = 'none';
+    } catch (e) { alert("Error: " + e.message); }
+}
+
+async function handleReschedule(mins) {
+    const newTime = new Date(Date.now() + mins * 60000);
+    const slotStr = newTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const timeNow = new Date().toLocaleTimeString([],{hour:'2-digit', minute:'2-digit'});
+    const reschMsg = `Shifted to ${slotStr} (Admin)`;
+
+    try {
+        await db.collection("orders").doc(activeActionOrderId).update({
+            status: "Rescheduled",
+            scheduledTimestamp: firebase.firestore.Timestamp.fromDate(newTime),
+            scheduledSlot: slotStr,
+            wasRescheduled: true,
+            overdue: false,
+            rescheduleHistory: firebase.firestore.FieldValue.arrayUnion(reschMsg) 
+        });
+        document.getElementById('adminActionModal').style.display = 'none';
+    } catch (e) { alert("Error: " + e.message); }
+}
+
+async function handleManualReschedule() {
+    const timeVal = document.getElementById('manualTime').value;
+    if (!timeVal) return alert("Please select a time");
+
+    const [hours, minutes] = timeVal.split(':');
+    const newTime = new Date();
+    newTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+    
+    const slotStr = newTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const reschMsg = `Shifted to ${slotStr} (Admin)`;
+
+    try {
+        await db.collection("orders").doc(activeActionOrderId).update({
+            status: "Rescheduled",
+            scheduledTimestamp: firebase.firestore.Timestamp.fromDate(newTime),
+            scheduledSlot: slotStr,
+            wasRescheduled: true,
+            overdue: false,
+            rescheduleHistory: firebase.firestore.FieldValue.arrayUnion(reschMsg) 
+        });
+        document.getElementById('adminActionModal').style.display = 'none';
+    } catch (e) { alert("Error: " + e.message); }
+}
+</script>
+
+<div id="adminActionModal" class="modal-overlay" onclick="closeActionModal(event)">
+    <div class="modal-box" onclick="event.stopPropagation()">
+        <div class="modal-header">Order Actions <span id="targetToken" style="color:#666; font-size: 0.9rem;"></span></div>
+        
+        <div class="action-section">
+            <span class="section-lbl">1. EXTEND PREP TIME</span>
+            <div class="btn-grid">
+                <button class="opt-btn" onclick="handleExtend(5)">+ 5 Minutes</button>
+                <button class="opt-btn" style="background:#c8e6c9;" onclick="handleExtend(10)">+ 10 Minutes</button>
+            </div>
+        </div>
+
+        <div class="action-section">
+            <span class="section-lbl">2. RESCHEDULE ORDER</span>
+            <div class="btn-grid">
+                <button class="opt-btn" onclick="handleReschedule(20)">20 Mins</button>
+                <button class="opt-btn" onclick="handleReschedule(40)">40 Mins</button>
+                <button class="opt-btn" onclick="handleReschedule(60)">1 Hour</button>
+                <button class="opt-btn" onclick="toggleManualInput()">Manual</button>
+            </div>
+            <div id="manualInputRow" class="manual-row" style="display:none;">
+                <input type="time" id="manualTime" class="manual-input">
+                <button class="opt-btn" style="background:var(--theme-dark); color:#fff;" onclick="handleManualReschedule()">Set</button>
+            </div>
+        </div>
+
+        <button class="opt-btn" style="width:100%; margin-top:10px; border:none;" onclick="document.getElementById('adminActionModal').style.display='none'">Cancel</button>
+    </div>
+</div>
+
+</body>
+</html> 

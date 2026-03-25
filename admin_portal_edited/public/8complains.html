@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Complains - CampusServe</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --bg-color: #f4f7f6;
+            --theme-dark: #1A6922;      
+            --theme-medium: #A3CCA3;    
+            --theme-light: #BEDFC8;     
+            --theme-pale: #C1E1CA;      
+            --panel-bg: #ecf7f0; 
+            --bg-white: #ffffff;
+            --text-dark: #1A6922;       
+            --text-grey: #5f6e5f;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Poppins', sans-serif; }
+        body { display: flex; height: 100vh; background-color: var(--bg-color); overflow: hidden; font-size: 14px; }
+
+        .sidebar { width: 250px; background-color: #e7f3eb; padding: 20px; display: flex; flex-direction: column; border-right: 1px solid #dcdcdc; }
+        .logo { color: #007e00; font-size: 1.5rem; font-weight: bold; margin-bottom: 40px; text-align: center; }
+        .nav-links { list-style: none; }
+        .nav-links li { margin-bottom: 15px; }
+        .nav-links a { text-decoration: none; color: black; font-size: 1rem; font-weight: 500; display: block; padding: 10px 15px; border-radius: 16px; transition: 0.3s; }
+        .nav-links a.active { background-color: #fff; color: #016301; font-weight: bold; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .nav-links a:hover { background-color: #c8e6c9; }
+
+        .main-content { flex: 1; padding: 25px 35px; display: flex; flex-direction: column; overflow-y: auto; height: 100vh; }
+        
+        header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; flex-shrink: 0; }
+        .search-box { background: #fff; padding: 10px 20px; border-radius: 30px; display: flex; align-items: center; width: 350px; border: 1px solid #dce9df; }
+        .search-box input { border: none; background: transparent; outline: none; width: 100%; margin-left: 12px; font-size: 0.95rem; color: #444; }
+        .user-actions { display: flex; align-items: center; gap: 15px; }
+        .notification { width: 45px; height: 45px; background: #fff; border-radius: 12px; display: flex; align-items: center; justify-content: center; border: 1px solid var(--theme-medium); cursor: pointer; }
+        .notification i { color: #FFD700; -webkit-text-stroke: 1px black; font-size: 1.2rem; }
+        .menu-toggle-btn { width: 42px; height: 42px; border-radius: 12px; background: var(--theme-pale); color: var(--theme-dark); display: flex; align-items: center; justify-content: center; cursor: pointer; border: 1px solid var(--theme-medium); }
+
+        .page-header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .page-title { color: #1b5e20; font-weight: 700; font-size: 2rem; }
+        .filter-tabs { display: flex; gap: 10px; }
+        .filter-pill { border: 1px solid transparent; background: #fff; padding: 8px 20px; border-radius: 30px; cursor: pointer; font-weight: 500; color: #666; font-size: 0.9rem; transition: 0.3s; box-shadow: 0 2px 8px rgba(0,0,0,0.03); }
+        .filter-pill.active { background-color:#E7F3EB; color: #008100; border-color: #007e007c; font-weight: 600; }
+
+        .table-container { background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.03); border: 1px solid #e0e0e0; margin-top: 20px; }
+        
+        .table-header { display: grid; grid-template-columns: 50px 1.5fr 1fr 1fr 2fr 100px 120px; gap: 15px; background-color: #C8E6C9; padding: 15px 20px; font-weight: 600; color: #1B5E20; font-size: 0.9rem; }
+        .table-row { display: grid; grid-template-columns: 50px 1.5fr 1fr 1fr 2fr 100px 120px; gap: 15px; padding: 15px 20px; align-items: center; transition: 0.2s; cursor: pointer; }
+        .id-text { font-weight: 700; color: var(--theme-dark); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+        .table-row:hover { background-color: #f9f9f9; }
+        .table-row.active { background-color: #e8f5e9; border-left: 4px solid var(--theme-dark); }
+        
+        .row-disputed { background-color: #fff5f5; border-left: 4px solid #d32f2f; }
+        .row-disputed:hover { background-color: #ffebee; }
+
+        .status-badge { padding: 4px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; display: flex; align-items: center; justify-content: center; min-height: 32px; width: 110px; text-align: center; }
+        .status-new { background-color: #ffebee; color: #c62828; border: 1px solid #ffcdd2; }
+        .status-progress { background-color: #fffde7; color: #fbc02d; border: 1px solid #fff9c4; }
+        .status-resolved { background-color: #e8f5e9; color: #2e7d32; border: 1px solid #c8e6c9; }
+
+        .content-body { display: flex; gap: 20px; height: 100%; overflow: hidden; }
+        .table-section { flex: 1; transition: 0.3s; overflow-y: auto; }
+        .content-body.split-active .table-section { flex: 1.5; }
+        .content-body.split-active .hide-on-split { display: none; }
+        
+        .content-body.split-active .table-header, 
+        .content-body.split-active .table-row { grid-template-columns: 40px 1.5fr 1fr 1fr 120px; }
+
+        .detail-panel { width: 0; opacity: 0; background-color: var(--panel-bg); border-radius: 15px; border: 1px solid #c8e6c9; transition: 0.3s; display: flex; flex-direction: column; overflow: hidden; }
+        .content-body.split-active .detail-panel { width: 420px; opacity: 1; padding: 20px; flex-shrink: 0; }
+        
+        .panel-header { padding-bottom: 15px; border-bottom: 1px solid #ddd; display: flex; justify-content: space-between; align-items: center; font-weight: 700; color: var(--theme-dark); }
+        .info-group { margin-top: 20px; flex: 1; overflow-y: auto; }
+        .info-row { display: flex; margin-bottom: 10px; }
+        .info-label { font-weight: 600; width: 100px; color: #555; }
+        .info-val { color: #000; flex: 1; word-break: break-word; }
+        
+        .reply-section { margin-top: 20px; padding-top: 15px; border-top: 1px solid #ddd; }
+        .reply-box { width: 100%; height: 80px; padding: 10px; border-radius: 8px; border: 1px solid #ccc; resize: none; margin-bottom: 10px; }
+        .send-btn { width: 100%; background: var(--theme-dark); color: white; border: none; padding: 12px; border-radius: 30px; font-weight: 600; cursor: pointer; margin-bottom:10px; }
+
+        /* Profile Modal CSS */
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 5000; justify-content: center; align-items: center; backdrop-filter: blur(4px); }
+        .modal-overlay.show { display: flex; }
+        .profile-box { background: #fff; padding: 25px; border-radius: 20px; width: 650px; max-width: 90%; box-shadow: 0 15px 50px rgba(0,0,0,0.3); transform: scale(0.95); animation: popUp 0.3s forwards; }
+        @keyframes popUp { to { transform: scale(1); } }
+
+        .toast-notification { visibility: hidden; position: fixed; top: 30px; left: 50%; transform: translateX(-50%); background: var(--theme-dark); color: white; padding: 15px 30px; border-radius: 8px; z-index: 9999; }
+        .toast-notification.show { visibility: visible; }
+    </style>
+</head>
+<body>
+
+    <aside class="sidebar">
+        <div class="logo">CampusServe<br>Canteen</div>
+        <ul class="nav-links">
+            <li><a href="2dashboard.html">Dashboard</a></li>
+            <li><a href="3order_management.html">Orders</a></li>
+            <li><a href="4menu_management.html">Menu Management</a></li>
+            <li><a href="13transaction.html">Transactions</a></li>
+            <li><a href="6users.html">Users</a></li>
+            <li><a href="5analytics.html">Analytics</a></li>
+            <li><a href="11announcement.html">Announcements</a></li>
+                    <li><a href="15deals.html">Combo / Deals</a></li>
+            <li><a href="9settings.html">Settings</a></li>
+        </ul>
+    </aside>
+
+    <main class="main-content">
+        <header>
+            <div class="search-box">
+                <i class="fas fa-search"></i>
+                <input type="text" id="searchInput" placeholder="Search by Name or Comment..." onkeyup="renderTable()">
+            </div>
+        </header>
+
+        <div class="page-header-row">
+            <h2 class="page-title">Complains</h2>
+            <div class="filter-tabs">
+                <button class="filter-pill active" onclick="setFilter('all', this)">All</button>
+                <button class="filter-pill" onclick="setFilter('Order Delayed', this)">Order Delayed</button>
+                <button class="filter-pill" onclick="setFilter('Food Quality', this)">Food Quality</button>
+                <button class="filter-pill" onclick="setFilter('Wrong Item', this)">Wrong Item</button>
+                <button class="filter-pill" onclick="setFilter('Refund Dispute', this)">Refund Disputes</button>
+            </div>
+        </div>
+
+        <div class="content-body" id="contentBody">
+            <div class="table-section">
+                <div class="table-container">
+                    <div class="table-header">
+                        <div>Sr no</div>
+                        <div>Order ID</div>
+                        <div>User Name</div>
+                        <div>Issue Type</div>
+                        <div class="hide-on-split">Description</div>
+                        <div class="hide-on-split">Date</div>
+                        <div style="text-align: center;">Status</div>
+                    </div>
+                    <div id="complainBody">
+                        <div style="padding:40px; text-align:center; color:#999;">Loading Complaints...</div>
+                    </div>
+                </div>
+            </div>
+
+            <aside class="detail-panel" id="detailPanel">
+                <div class="panel-header">
+                    Complaint Details
+                    <i class="fas fa-times" style="cursor:pointer" onclick="closeDetailPanel()"></i>
+                </div>
+                <div class="info-group">
+                    <img id="d_image" style="width:100%; height:180px; object-fit:contain; border-radius:8px; margin-bottom:15px; display:none; background:#eee;">
+                    <div class="info-row"><div class="info-label">User:</div><div class="info-val" id="d_user"></div></div>
+                    <div class="info-row"><div class="info-label">Order ID:</div><div class="info-val" id="d_order"></div></div>
+                    <div class="info-row"><div class="info-label">Issue:</div><div class="info-val" id="d_issue"></div></div>
+                    <div class="info-row"><div class="info-label">Desc:</div><div class="info-val" id="d_desc"></div></div>
+                    <div class="info-row" style="color:var(--theme-dark); font-weight:bold; margin-top:10px;"><div class="info-label">Status:</div><div class="info-val" id="d_adminReply"></div></div>
+                    
+                    <button class="send-btn" style="background:#e8f5e9; color:#1b5e20; border:1px solid #1b5e20; margin-top:20px;" onclick="openUserProfile()">
+                        <i class="fas fa-id-card"></i> View Student Profile & Order Data
+                    </button>
+                </div>
+                
+                <div class="reply-section">
+                    <button id="resolutionToggleBtn" class="send-btn" style="background:#e3f2fd; color:#1565c0; border:1px solid #90caf9; display:none;" onclick="sendRefundSelectionToUser()">
+                        <i class="fas fa-toggle-on"></i> Enable User Refund Selection (Wallet/Cash)
+                    </button>
+
+                    <button id="markCashBtn" class="send-btn" style="background:#fff3e0; color:#e65100; border:1px solid #ff9800; display:none;" onclick="markCashHandedOver()">
+                        <i class="fas fa-hand-holding-usd"></i> Mark Cash Refunded After Dispute
+                    </button>
+
+                    <textarea class="reply-box" id="replyText" placeholder="Reply to user (e.g. Please collect your cash refund today at 2 PM)"></textarea>
+                    <button class="send-btn" id="sendBtn" onclick="sendResponse()">Send Reply & Resolve</button>
+                </div>
+            </aside>
+        </div>
+        <div id="toast" class="toast-notification"></div>
+    </main>
+
+    <div id="profileModal" class="modal-overlay" onclick="closeProfileModal(event)">
+        <div class="profile-box" onclick="event.stopPropagation()">
+            <div style="border-bottom:1px solid #eee; padding-bottom:15px; margin-bottom:15px; display:flex; justify-content:space-between; align-items:center;">
+                <h2 style="margin:0; color:#1b5e20;"><i class="fas fa-user-circle"></i> Student & Order Profile</h2>
+                <i class="fas fa-times" style="cursor:pointer; font-size:1.5rem; color:#888;" onclick="closeProfileModal()"></i>
+            </div>
+            <div style="display:flex; gap:20px;">
+                <div style="flex:1; background:#f9f9f9; padding:15px; border-radius:12px; border:1px solid #ddd;">
+                    <h3 style="margin-top:0; color:#333;">Student Details</h3>
+                    <div id="p_userName" style="font-weight:bold; font-size:1.2rem; margin-top:10px;">Loading...</div>
+                    <div id="p_userContact" style="color:#666; font-size:0.95rem; margin-bottom:20px;"></div>
+                    
+                    <div style="background:#e8f5e9; padding:15px; border-radius:8px; border:1px solid #c8e6c9;">
+                        <div style="font-size:0.85rem; color:#2e7d32; font-weight:bold; text-transform:uppercase;">Campus Wallet Balance</div>
+                        <div id="p_userWallet" style="font-size:1.8rem; font-weight:900; color:#1b5e20;">₹0.00</div>
+                    </div>
+                </div>
+                
+                <div style="flex:1.5; background:#fff; padding:15px; border-radius:12px; border:1px solid #ddd;">
+                    <h3 style="margin-top:0; color:#333;">Order Data</h3>
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-top:10px;">
+                        <div id="p_orderToken" style="font-weight:bold; font-size:1.1rem; color:#1b5e20;">Token: --</div>
+                        <div id="p_orderStatus" style="font-size:0.9rem; font-weight:bold; padding:4px 8px; border-radius:6px; background:#eee;">Status</div>
+                    </div>
+                    
+                    <div style="max-height:180px; overflow-y:auto; border:1px solid #eee; border-radius:6px; padding:10px; margin-top:15px; margin-bottom:15px;" id="p_orderItems"></div>
+                    
+                    <div style="display:flex; justify-content:space-between; font-weight:bold; font-size:1.2rem; border-top:1px dashed #ccc; padding-top:10px;">
+                        <span>Total Paid:</span>
+                        <span id="p_orderTotal" style="color:#d32f2f;">₹0.00</span>
+                    </div>
+                </div>
+            </div>
+            <button class="send-btn" style="margin-top:20px;" onclick="closeProfileModal()">Close Profile</button>
+        </div>
+    </div>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyCD0BToDMJREYOlTSpxNihP__c4uC0tvnY",
+            projectId: "campusserve-5f138",
+            appId: "1:169392088588:web:6af9c03ce5c02fa4433029"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        let allComplaints = [];
+        let currentFilter = 'all';
+        let currentDocId = null;
+        let activeOrderIdForCash = null;
+
+        function fetchComplaints() {
+            db.collection("complaints").orderBy("timestamp", "desc").onSnapshot((snapshot) => {
+                allComplaints = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                
+                // PRIORITY SORTING
+                allComplaints.sort((a, b) => {
+                    const aDispute = (a.issueType === 'Refund Dispute' && a.status !== 'Resolved') ? 1 : 0;
+                    const bDispute = (b.issueType === 'Refund Dispute' && b.status !== 'Resolved') ? 1 : 0;
+                    if(aDispute !== bDispute) return bDispute - aDispute;
+                    const tA = a.timestamp ? a.timestamp.seconds : 0;
+                    const tB = b.timestamp ? b.timestamp.seconds : 0;
+                    return tB - tA;
+                });
+
+                renderTable();
+            });
+        }
+
+        function renderTable() {
+            const container = document.getElementById('complainBody');
+            const searchVal = document.getElementById('searchInput').value.toLowerCase();
+            container.innerHTML = "";
+            
+            const filtered = allComplaints.filter(c => {
+                const typeStr = (c.issueType || c.type || '').toLowerCase();
+                const matchesType = currentFilter === 'all' || typeStr.includes(currentFilter.toLowerCase());
+                const matchesSearch = (c.userName || '').toLowerCase().includes(searchVal) || (c.orderId || '').toLowerCase().includes(searchVal);
+                return matchesType && matchesSearch;
+            });
+
+            if(filtered.length === 0) {
+                container.innerHTML = '<div style="padding:40px; text-align:center; color:#999;">No complaints found.</div>';
+                return;
+            }
+
+            filtered.forEach((c, index) => {
+                const date = c.timestamp ? c.timestamp.toDate().toLocaleDateString() : 'N/A';
+                const badgeClass = c.status === 'New' ? 'status-new' : (c.status === 'In Progress' ? 'status-progress' : 'status-resolved');
+                const rawDesc = c.description || c.message || "No description.";
+                const shortDesc = rawDesc.length > 40 ? rawDesc.substring(0, 40) + '...' : rawDesc;
+                
+                const isDispute = c.issueType === 'Refund Dispute' && c.status !== 'Resolved';
+
+                const row = document.createElement('div');
+                row.className = `table-row ${c.id === currentDocId ? 'active' : ''} ${isDispute ? 'row-disputed' : ''}`;
+                row.onclick = () => viewComplain(c.id);
+                
+                row.innerHTML = `
+                    <div>${index + 1}</div>
+                    <div class="id-text" style="${isDispute ? 'color:red;' : ''}">${c.orderId}</div>
+                    <div style="font-weight:600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${c.userName || 'Unknown'}</div>
+                    <div style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: ${isDispute ? 'bold' : 'normal'}">${c.issueType || c.type || "General"}</div>
+                    <div class="hide-on-split" style="color:#666; font-size:0.85rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${shortDesc}</div>
+                    <div class="hide-on-split">${date}</div>
+                    <div style="display:flex; justify-content:center;"><span class="status-badge ${badgeClass}">${c.status || 'New'}</span></div>
+                `;
+                container.appendChild(row);
+            });
+        }
+
+        async function viewComplain(id) {
+            currentDocId = id;
+            const complain = allComplaints.find(c => c.id === id);
+            if (!complain) return;
+
+            document.getElementById('contentBody').classList.add('split-active');
+            renderTable(); 
+
+            document.getElementById('d_user').innerText = complain.userName || "Guest";
+            document.getElementById('d_order').innerText = complain.orderId || "N/A";
+            document.getElementById('d_issue').innerText = complain.issueType || complain.type || "General";
+            document.getElementById('d_desc').innerText = complain.description || complain.message || "";
+            document.getElementById('d_adminReply').innerText = complain.adminReply || "Waiting for Action";
+
+            const toggleBtn = document.getElementById('resolutionToggleBtn');
+            const cashBtn = document.getElementById('markCashBtn');
+            
+            toggleBtn.style.display = "none";
+            cashBtn.style.display = "none";
+
+            // Figure out the real order ID
+            let targetOrderId = complain.orderId;
+            if(!targetOrderId.includes("ORDER_")) {
+                const tokenSearch = await db.collection("orders").where("tokenNumber", "==", complain.orderId).limit(1).get();
+                if(!tokenSearch.empty) targetOrderId = tokenSearch.docs[0].id;
+            }
+            activeOrderIdForCash = targetOrderId;
+
+            // Check actual order status
+            const orderDoc = await db.collection("orders").doc(targetOrderId).get();
+            if(orderDoc.exists) {
+                const oStatus = orderDoc.data().status;
+                if(complain.issueType === 'Refund Dispute' && complain.status !== 'Resolved') {
+                    toggleBtn.style.display = "block";
+                }
+                if (oStatus === 'Cash Refund Requested') {
+                    cashBtn.style.display = "block";
+                }
+            }
+
+            if (complain.status === 'New') {
+                await db.collection("complaints").doc(id).update({ status: 'In Progress' });
+            }
+        }
+
+        async function markCashHandedOver() {
+            if(!activeOrderIdForCash || !currentDocId) return;
+            const timeNow = new Date().toLocaleTimeString([],{hour:'2-digit', minute:'2-digit'});
+            const dateNow = new Date().toLocaleDateString();
+
+            await db.collection("orders").doc(activeActionOrderId).update({
+                status: 'Cash Refunded - Verify',
+                activityLogs: firebase.firestore.FieldValue.arrayUnion(`Admin handed over cash on ${dateNow}, ${timeNow}`)
+            });
+
+            await db.collection("complaints").doc(currentDocId).update({
+                status: 'Resolved',
+                adminReply: 'Admin confirmed handing over the cash. Waiting for user verification.',
+                replyTimestamp: firebase.firestore.FieldValue.serverTimestamp()
+            });
+
+            showToast("Marked Cash as Handed Over. Sent verification to user!");
+            closeDetailPanel();
+        }
+
+        async function sendRefundSelectionToUser() {
+            if(!currentDocId) return;
+            const complain = allComplaints.find(c => c.id === currentDocId);
+            if(!complain || !complain.userId) return;
+
+            const btn = document.getElementById('resolutionToggleBtn');
+            btn.innerText = "Sending Options to User...";
+            btn.disabled = true;
+
+            let targetOrderId = complain.orderId;
+            if(!targetOrderId.includes("ORDER_")) {
+                const tokenSearch = await db.collection("orders").where("tokenNumber", "==", complain.orderId).limit(1).get();
+                if(!tokenSearch.empty) targetOrderId = tokenSearch.docs[0].id;
+            }
+
+            await db.collection("notifications").add({
+                userId: complain.userId,
+                title: "Resolve Your Refund",
+                message: "Admin has reviewed your dispute. Please select how you want to receive your refund.",
+                type: "resolution_request",
+                targetId: targetOrderId,
+                complainId: currentDocId,
+                timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                isRead: false,
+                actionTaken: false
+            });
+
+            await db.collection("complaints").doc(currentDocId).update({
+                adminReply: "Options sent to User's phone. Waiting for them to select Wallet or Cash."
+            });
+
+            showToast("Options successfully sent to Student's App!");
+            btn.innerText = "Options Sent!";
+            btn.style.background = "#e8f5e9";
+            btn.style.color = "#2e7d32";
+        }
+
+        async function openUserProfile() {
+            if(!currentDocId) return;
+            const complain = allComplaints.find(c => c.id === currentDocId);
+            if(!complain || !complain.userId) return alert("User ID missing from this complaint.");
+
+            const userSnap = await db.collection("users").doc(complain.userId).get();
+            if(userSnap.exists) {
+                const ud = userSnap.data();
+                document.getElementById('p_userName').innerText = ud.name || complain.userName || "Student";
+                document.getElementById('p_userContact').innerHTML = `${ud.email || 'No Email'}<br>${ud.phone || 'No Phone'}`;
+                document.getElementById('p_userWallet').innerText = `₹${(ud.wallet_balance || 0).toFixed(2)}`;
+            }
+
+            let targetOrderId = complain.orderId;
+            if(!targetOrderId.includes("ORDER_")) {
+                const tokenSearch = await db.collection("orders").where("tokenNumber", "==", complain.orderId).limit(1).get();
+                if(!tokenSearch.empty) targetOrderId = tokenSearch.docs[0].id;
+            }
+
+            const orderSnap = await db.collection("orders").doc(targetOrderId).get();
+            const itemsBox = document.getElementById('p_orderItems');
+            
+            if(orderSnap.exists) {
+                const od = orderSnap.data();
+                document.getElementById('p_orderToken').innerText = `Token: ${od.tokenNumber || '--'}`;
+                document.getElementById('p_orderStatus').innerText = (od.status || 'Unknown').toUpperCase();
+                document.getElementById('p_orderTotal').innerText = `₹${(od.totalAmount || 0).toFixed(2)}`;
+                
+                if(od.items && od.items.length > 0) {
+                    itemsBox.innerHTML = od.items.map(i => `
+                        <div style="display:flex; justify-content:space-between; margin-bottom:5px; border-bottom:1px dashed #eee; padding-bottom:5px;">
+                            <span>${i.quantity}x ${i.title || i.name}</span>
+                            <span style="font-weight:bold;">₹${i.price}</span>
+                        </div>
+                    `).join('');
+                } else { itemsBox.innerHTML = "<p>No items found.</p>"; }
+            } else { itemsBox.innerHTML = "<p>Could not load full order details.</p>"; }
+
+            document.getElementById('profileModal').classList.add('show');
+        }
+
+        function closeProfileModal(e) {
+            if(e) { if(e.target.id === 'profileModal') document.getElementById('profileModal').classList.remove('show'); }
+            else { document.getElementById('profileModal').classList.remove('show'); }
+        }
+
+        async function sendResponse() {
+            const reply = document.getElementById('replyText').value;
+            if (!reply.trim() || !currentDocId) return;
+
+            const btn = document.getElementById('sendBtn');
+            btn.disabled = true; btn.innerText = "Sending...";
+
+            await db.collection("complaints").doc(currentDocId).update({
+                status: 'Resolved',
+                adminReply: reply,
+                replyTimestamp: firebase.firestore.FieldValue.serverTimestamp()
+            });
+
+            const complain = allComplaints.find(c => c.id === currentDocId);
+            if(complain && complain.userId) {
+                await db.collection("notifications").add({
+                    userId: complain.userId,
+                    title: complain.issueType === 'Refund Dispute' ? "Cash Refund Update 💵" : "Complaint Resolved",
+                    message: `Admin Replied: ${reply}`,
+                    type: "alert",
+                    targetId: complain.orderId,
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                    isRead: false
+                });
+            }
+
+            showToast("Ticket Resolved & User Notified via App!");
+            document.getElementById('replyText').value = "";
+            btn.disabled = false; btn.innerText = "Send Reply & Resolve";
+            closeDetailPanel();
+        }
+
+        function setFilter(type, btn) {
+            currentFilter = type;
+            document.querySelectorAll('.filter-pill').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            renderTable();
+        }
+
+        function closeDetailPanel() {
+            document.getElementById('contentBody').classList.remove('split-active');
+            currentDocId = null;
+            renderTable();
+        }
+
+        function showToast(msg) {
+            const t = document.getElementById("toast");
+            t.innerText = msg; t.classList.add("show");
+            setTimeout(() => t.classList.remove("show"), 3000);
+        }
+
+        fetchComplaints();
+    </script>
+</body>
+</html>

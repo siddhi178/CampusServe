@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Restock Management - CampusServe</title>
+    
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- PDF Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.29/jspdf.plugin.autotable.min.js"></script>
+
+    <style>
+        :root {
+            --bg-color: #f4f7f6;
+            --theme-dark: #1A6922;      
+            --theme-medium: #A3CCA3;    
+            --theme-light: #BEDFC8;     
+            --theme-pale: #CDE7D3; 
+            --bg-white: #ffffff;       
+            --text-dark: #1A6922;
+            --text-grey: #5f6e5f;
+            --card-radius: 12px;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body { 
+            display: flex; 
+            height: 100vh; 
+            background-color: var(--bg-color); 
+            overflow: hidden; 
+            font-family: 'Poppins', sans-serif;
+        }
+
+        /* --- SIDEBAR --- */
+        .sidebar {
+            width: 250px;
+            background-color: #e7f3eb;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            border-right: 1px solid #dcdcdc;
+        }
+        .logo {
+            color: #007e00;
+            font-size: 1.4rem;
+            font-weight: bold;
+            margin-bottom: 40px;
+            text-align: center;
+        }
+        .nav-links { list-style: none; }
+        .nav-links li { margin-bottom: 12px; }
+        .nav-links a {
+            text-decoration: none;
+            color: black;
+            font-size: 0.9rem; 
+            font-weight: 500;
+            display: block;
+            padding: 10px 15px;
+            border-radius: 16px;
+            transition: 0.3s;
+        }
+        .nav-links a.active {
+            background-color: #fff;
+            color: #016301;
+            font-size: 0.95rem; 
+            font-weight: bold;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+        }
+        .nav-links a:hover { background-color: #c8e6c9; }
+
+        /* --- MAIN CONTENT --- */
+        .main-content { 
+            flex: 1; 
+            padding: 25px 35px; 
+            overflow-y: auto; 
+            display: flex; 
+            flex-direction: column; 
+        }
+
+        .back-nav { margin-bottom: 20px; }
+        .btn-back { 
+            background: none; border: none; font-family: 'Outfit';
+            color: var(--text-grey); cursor: pointer; font-weight: 600;
+            font-size: 0.85rem;
+            display: flex; align-items: center; gap: 8px; transition: 0.3s;
+        }
+
+        .header-section {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 40px;
+        }
+        .page-title h1 { font-family: 'Outfit'; font-size: 1.8rem; color: var(--theme-dark); font-weight: 800; }
+        .page-title p { 
+            color: var(--text-grey); 
+            font-size: 0.85rem; 
+            margin-top: 8px; 
+        }
+
+        .header-actions { display: flex; gap: 12px; }
+
+        .btn { 
+            padding: 10px 18px; border-radius: 10px; font-weight: 700; 
+            cursor: pointer; border: none; display: flex; align-items: center; 
+            gap: 8px; transition: 0.3s; font-family: 'Outfit'; font-size: 0.85rem;
+        }
+        .btn-add { background-color: var(--theme-dark); color: white; }
+        .btn-pdf-top { background-color: white; color: var(--theme-dark); border: 1px solid var(--theme-medium); }
+
+        /* --- TABLE DESIGN (Matching Transactions UI) --- */
+        .table-wrapper { 
+            background: white;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+        }
+        table { width: 100%; border-collapse: collapse; }
+        
+        thead { background-color: var(--theme-pale); }
+        th { 
+            text-align: left; 
+            padding: 15px 20px; 
+            color: var(--theme-dark); 
+            font-size: 0.8rem; 
+            font-weight: 700; 
+            text-transform: uppercase; 
+            letter-spacing: 0.5px;
+        }
+        
+        tr.table-row-card td { 
+            background: #ffffff; 
+            padding: 15px 20px; 
+            font-size: 0.85rem;
+            color: #333; 
+            border-bottom: 1px solid #f0f0f0;
+            transition: 0.2s;
+        }
+        
+        tr.table-row-card:hover td { background: #f9fdfa; }
+
+        .brand-note { color: var(--text-grey); font-size: 0.75rem; font-weight: 400; margin-top: 2px; }
+        
+        .badge { padding: 4px 10px; border-radius: 6px; font-size: 0.7rem; font-weight: 800; }
+        .badge-urgent { background: #ffebee; color: #c62828; }
+        .badge-low { background: #fff3e0; color: #ef6c00; }
+        .badge-ok { background: #e8f5e9; color: #2e7d32; }
+
+        .action-btns { display: flex; gap: 12px; align-items: center; }
+        .icon-btn { 
+            background: none; border: none; color: #999; cursor: pointer; font-size: 0.9rem; transition: 0.2s;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .icon-btn:hover { color: var(--theme-dark); }
+        .icon-btn.delete:hover { color: #c62828; }
+        .icon-btn.pdf-row:hover { color: #d32f2f; }
+
+        /* --- PDF PREVIEW MODAL --- */
+        #pdfModal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.7);
+            z-index: 5000;
+            justify-content: center;
+            align-items: center;
+        }
+        #pdfModal.show { display: flex; }
+
+        .pdf-box {
+            background: #fff;
+            width: 90%;
+            max-width: 800px;
+            height: 90vh;
+            border-radius: 15px;
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            position: relative;
+        }
+        
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .modal-header h3 { color: var(--theme-dark); font-family: 'Outfit'; }
+        
+        .btn-modal-close { background: none; border: none; color: #999; cursor: pointer; font-size: 1.2rem; }
+
+        .pdf-footer { margin-top: 15px; display: flex; gap: 10px; justify-content: flex-end; }
+        .btn-download { background: var(--theme-dark); color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: 700; cursor: pointer; }
+        .btn-close-gray { background: #f0f0f0; color: #555; border: none; padding: 10px 20px; border-radius: 8px; font-weight: 700; cursor: pointer; }
+
+        /* --- SIDE PANEL --- */
+        .side-panel { 
+            position: fixed; top: 0; right: -420px; width: 380px; 
+            height: 100vh; background: white; z-index: 2000;
+            box-shadow: -10px 0 30px rgba(0,0,0,0.1); transition: 0.4s;
+            display: flex; flex-direction: column;
+        }
+        .side-panel.open { right: 0; }
+        .panel-header { padding: 25px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; }
+        .panel-header h2 { font-family: 'Outfit'; color: var(--theme-dark); font-size: 1.2rem; }
+        .panel-body { padding: 25px; flex: 1; overflow-y: auto; }
+        .form-group { margin-bottom: 18px; }
+        .form-group label { display: block; margin-bottom: 6px; font-weight: 700; font-size: 0.8rem; color: var(--text-grey); }
+        .form-input { width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid #ddd; outline: none; font-size: 0.85rem; font-family: 'Poppins';}
+        .panel-footer { padding: 20px; border-top: 1px solid #eee; }
+        .btn-save { width: 100%; padding: 12px; background: var(--theme-dark); color: white; border-radius: 12px; border: none; font-weight: 700; cursor: pointer; font-family: 'Outfit';}
+    </style>
+</head>
+<body>
+
+    <aside class="sidebar">
+        <div class="logo">CampusServe<br>Canteen</div>
+        <ul class="nav-links">
+            <li><a href="2dashboard.html">Dashboard</a></li>
+            <li><a href="3order_management.html">Orders</a></li>
+            <li><a href="4menu_management.html" class="active">Menu Management</a></li>
+            <li><a href="13transaction.html">Transactions</a></li>
+            <li><a href="6users.html">Users</a></li>
+            <li><a href="5analytics.html">Analytics</a></li>
+            <li><a href="11announcement.html">Announcements</a></li>
+                    <li><a href="15deals.html">Combo / Deals</a></li>
+            <li><a href="9settings.html">Settings</a></li>
+        </ul>
+    </aside>
+
+    <main class="main-content">
+        <div class="back-nav">
+            <button class="btn-back" onclick="window.location.href='4menu_management.html'">
+                <i class="fas fa-arrow-left"></i> Back to Menu Management
+            </button>
+        </div>
+
+        <div class="header-section">
+            <div class="page-title">
+                <h1>Restock Items</h1>
+                <p>Track and manage raw materials required for the kitchen.</p>
+            </div>
+            <div class="header-actions">
+                <button class="btn btn-pdf-top" onclick="generateFullReport()">
+                    <i class="fas fa-file-pdf"></i> PDF Report
+                </button>
+                <button class="btn btn-add" onclick="openAddPanel()">
+                    <i class="fas fa-plus"></i> Add New Item
+                </button>
+            </div>
+        </div>
+
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 60px;">#</th>
+                        <th>Item Details</th>
+                        <th>Category</th>
+                        <th>Required Qty</th>
+                        <th>Urgency</th>
+                        <th style="width: 140px; text-align: center;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="stockTableBody">
+                    <tr><td colspan="6" style="text-align:center; padding:40px; color:#999;">Loading Inventory...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </main>
+
+    <!-- Side Drawer Panel -->
+    <aside class="side-panel" id="addPanel">
+        <div class="panel-header">
+            <h2 id="panelTitle">Add Stock Item</h2>
+            <i class="fas fa-times" style="cursor:pointer; color:#999;" onclick="closeAddPanel()"></i>
+        </div>
+        <div class="panel-body">
+            <div class="form-group">
+                <label>Item Name</label>
+                <input type="text" class="form-input" id="inpItem" placeholder="e.g. Tomato Ketchup">
+            </div>
+            <div class="form-group">
+                <label>Brand / Note</label>
+                <input type="text" class="form-input" id="inpBrand" placeholder="e.g. Maggi - Large Bottles">
+            </div>
+            <div class="form-group">
+                <label>Category</label>
+                <select class="form-input" id="inpCat">
+                    <option>Raw Material</option>
+                    <option>Dairy</option>
+                    <option>Beverages</option>
+                    <option>Condiments</option>
+                    <option>Packaging</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Quantity Required</label>
+                <input type="text" class="form-input" id="inpQty" placeholder="e.g. 10 kg">
+            </div>
+            <div class="form-group">
+                <label>Urgency Level</label>
+                <select class="form-input" id="inpUrgency">
+                    <option value="Urgent">Urgent</option>
+                    <option value="Low">Low Stock</option>
+                    <option value="Normal">Routine</option>
+                </select>
+            </div>
+        </div>
+        <div class="panel-footer">
+            <button class="btn-save" onclick="saveItem()">Save Item</button>
+        </div>
+    </aside>
+
+    <!-- PDF Preview Modal (Matches Transaction Page) -->
+    <div id="pdfModal">
+        <div class="pdf-box">
+            <div class="modal-header">
+                <h3>Restock Requirement Preview</h3>
+                <button class="btn-modal-close" onclick="closePdfModal()"><i class="fas fa-times"></i></button>
+            </div>
+            <iframe id="pdfPreviewFrame" style="flex:1; border:1px solid #ddd; border-radius:8px;"></iframe>
+            <div class="pdf-footer">
+                <button class="btn-download" id="downloadPdfBtn">Download PDF</button>
+                <button class="btn-close-gray" onclick="closePdfModal()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // FIREBASE INITIALIZATION
+        const firebaseConfig = {
+            apiKey: "AIzaSyCD0BToDMJREYOlTSpxNihP__c4uC0tvnY",
+            authDomain: "campusserve-5f138.firebaseapp.com",
+            projectId: "campusserve-5f138",
+            storageBucket: "campusserve-5f138.firebasestorage.app",
+            messagingSenderId: "169392088588",
+            appId: "1:169392088588:web:6af9c03ce5c02fa4433029"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        let currentEditId = null;
+        let allStockItems = []; // To store data locally for PDF logic
+
+        // LOAD DATA
+        db.collection("inventory").orderBy("urgency", "asc").onSnapshot((snapshot) => {
+            const tbody = document.getElementById('stockTableBody');
+            tbody.innerHTML = "";
+            allStockItems = [];
+            let count = 1;
+
+            snapshot.docs.forEach(doc => {
+                const data = doc.data();
+                const id = doc.id;
+                allStockItems.push({ id, ...data });
+
+                let badgeClass = data.urgency === 'Urgent' ? 'badge-urgent' : (data.urgency === 'Low' ? 'badge-low' : 'badge-ok');
+
+                const row = document.createElement('tr');
+                row.className = 'table-row-card';
+                row.innerHTML = `
+                    <td style="font-weight: 700; color: var(--theme-dark)">${count++}</td>
+                    <td>
+                        <div style="font-weight: 700; font-family: 'Outfit'">${data.name}</div>
+                        <div class="brand-note">${data.brand || "-"}</div>
+                    </td>
+                    <td>${data.category}</td>
+                    <td style="font-weight: 700;">${data.qty}</td>
+                    <td><span class="badge ${badgeClass}">${data.urgency}</span></td>
+                    <td>
+                        <div class="action-btns" style="justify-content: center;">
+                            <button class="icon-btn" title="Edit" onclick="editRow('${id}', this)"><i class="fas fa-pen"></i></button>
+                            <button class="icon-btn pdf-row" title="View PDF" onclick="generateSingleItemPDF('${id}')"><i class="fas fa-file-pdf"></i></button>
+                            <button class="icon-btn delete" title="Delete" onclick="deleteRow('${id}')"><i class="fas fa-trash"></i></button>
+                        </div>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+            if(snapshot.empty) tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:40px; color:#999;">Inventory is empty.</td></tr>`;
+        });
+
+        // SINGLE ITEM PDF PREVIEW (MATCHING TRANSACTION LOGIC)
+        function generateSingleItemPDF(id) {
+            const item = allStockItems.find(d => d.id === id);
+            if (!item) return;
+
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+
+            // Header
+            doc.setFontSize(22); doc.setTextColor(26, 105, 34); doc.text("CampusServe Canteen", 105, 20, { align: "center" });
+            doc.setFontSize(14); doc.setTextColor(0); doc.text("Kitchen Restock Requirement", 105, 30, { align: "center" });
+            
+            // Item Details
+            doc.setFontSize(11);
+            doc.text(`Generated on: ${new Date().toLocaleString()}`, 20, 45);
+            doc.setDrawColor(200); doc.line(20, 50, 190, 50);
+
+            const rows = [
+                ["Item Name", item.name],
+                ["Brand / Note", item.brand || "-"],
+                ["Category", item.category],
+                ["Quantity Required", item.qty],
+                ["Urgency Status", item.urgency.toUpperCase()]
+            ];
+
+            doc.autoTable({
+                startY: 60,
+                body: rows,
+                theme: 'striped',
+                headStyles: { fillColor: [26, 105, 34] },
+                styles: { fontSize: 10, cellPadding: 8 }
+            });
+
+            // Set Preview
+            const previewFrame = document.getElementById('pdfPreviewFrame');
+            previewFrame.src = doc.output('bloburl');
+
+            // Set Download Trigger
+            document.getElementById('downloadPdfBtn').onclick = () => doc.save(`Restock_${item.name.replace(/\s+/g, '_')}.pdf`);
+
+            // Show Modal
+            document.getElementById('pdfModal').classList.add('show');
+        }
+
+        function closePdfModal() { document.getElementById('pdfModal').classList.remove('show'); }
+
+        // --- CRUD ACTIONS ---
+        async function saveItem() {
+            const name = document.getElementById('inpItem').value;
+            const brand = document.getElementById('inpBrand').value || "-";
+            const category = document.getElementById('inpCat').value;
+            const qty = document.getElementById('inpQty').value;
+            const urgency = document.getElementById('inpUrgency').value;
+            if(!name || !qty) return alert("Fill required fields");
+
+            const itemData = { name, brand, category, qty, urgency, updatedAt: firebase.firestore.FieldValue.serverTimestamp() };
+            try {
+                if (currentEditId) await db.collection("inventory").doc(currentEditId).update(itemData);
+                else await db.collection("inventory").add(itemData);
+                closeAddPanel();
+            } catch(e) { alert("Error: " + e.message); }
+        }
+
+        function deleteRow(id) { if(confirm("Permanently delete this entry?")) db.collec5ttion("inventory").doc(id).delete(); }
+
+        function editRow(id, btn) {
+            currentEditId = id;
+            const row = btn.closest('tr');
+            document.getElementById('inpItem').value = row.querySelector('div[style*="font-weight: 700"]').innerText;
+            document.getElementById('inpBrand').value = row.querySelector('.brand-note').innerText;
+            document.getElementById('inpCat').value = row.cells[2].innerText;
+            document.getElementById('inpQty').value = row.cells[3].innerText;
+            document.getElementById('inpUrgency').value = row.querySelector('.badge').innerText;
+            openAddPanel('edit');
+        }
+
+        function openAddPanel(mode = 'add') {
+            document.getElementById('panelTitle').innerText = mode === 'add' ? "Add Stock Item" : "Edit Stock Item";
+            if(mode === 'add') { currentEditId = null; clearForm(); }
+            document.getElementById('addPanel').classList.add('open');
+        }
+
+        function closeAddPanel() { document.getElementById('addPanel').classList.remove('open'); }
+        function clearForm() { 
+            document.getElementById('inpItem').value = ""; document.getElementById('inpBrand').value = ""; 
+            document.getElementById('inpQty').value = ""; document.getElementById('inpCat').value = "Raw Material";
+        }
+
+        // FULL REPORT LOGIC (Optional, for top button)
+        function generateFullReport() {
+            if(allStockItems.length === 0) return alert("Nothing to export");
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            doc.setFontSize(20); doc.setTextColor(26, 105, 34); doc.text("Full Restock Report", 14, 20);
+            
+            const tableRows = allStockItems.map((item, i) => [i+1, item.name, item.brand, item.category, item.qty, item.urgency]);
+            doc.autoTable({
+                startY: 30,
+                head: [['#', 'Item', 'Brand', 'Category', 'Qty', 'Urgency']],
+                body: tableRows,
+                headStyles: { fillColor: [26, 105, 34] }
+            });
+
+            document.getElementById('pdfPreviewFrame').src = doc.output('bloburl');
+            document.getElementById('downloadPdfBtn').onclick = () => doc.save(`Full_Restock_Report.pdf`);
+            document.getElementById('pdfModal').classList.add('show');
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Transactions - CampusServe</title>
+    
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --bg-color: #f4f7f6;
+            --primary-green: #007E00;
+            --light-green: #E7F3EB;
+            --text-dark: #333;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Poppins', sans-serif; }
+        
+        /* --- LAYOUT FIX FOR SCROLLING --- */
+        body { display: flex; height: 100vh; background-color: var(--bg-color); overflow: hidden; font-size: 14px; }
+
+        /* Sidebar: Fixed width, no shrinking */
+        .sidebar { width: 260px; background-color: var(--light-green); padding: 25px; display: flex; flex-direction: column; border-right: 1px solid #dcdcdc; flex-shrink: 0; }
+        .logo { color: var(--primary-green); font-size: 1.8rem; font-weight: 800; text-align: center; margin-bottom: 40px; }
+        .nav-links { list-style: none; }
+        .nav-links li { margin-bottom: 15px; }
+        .nav-links a { text-decoration: none; color: var(--text-dark); font-size: 1.1rem; font-weight: 500; display: block; padding: 12px 18px; border-radius: 16px; transition: 0.3s; }
+        .nav-links a.active { background-color: #fff; color: #016301; font-weight: bold; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .nav-links a:hover { background-color: #c8e6c9; transform: translateX(5px); }
+
+        /* Main Content: Takes remaining space, SCROLLS independently */
+        .main-content { 
+            flex: 1; 
+            padding: 25px 35px; 
+            display: flex; 
+            flex-direction: column; 
+            overflow-y: auto; /* <--- This enables vertical scrolling */
+            height: 100vh;
+        }
+        
+        /* Header */
+        header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; flex-shrink: 0; }
+        .page-title { color: #1b5e20; margin: 0; font-weight: 700; font-size: 2rem; }
+        
+        /* Filters */
+        .filter-group { display: flex; gap: 10px; background: #fff; padding: 8px; border-radius: 30px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .filter-btn { padding: 8px 16px; border: none; background: transparent; border-radius: 20px; cursor: pointer; font-size: 0.9rem; font-weight: 600; color: #666; transition: 0.2s; }
+        .filter-btn.active { background: #007E00; color: white; }
+        .filter-btn:hover:not(.active) { background: #f0f0f0; }
+
+        .search-bar { background: #E8F5E9; padding: 10px 20px; border-radius: 20px; display: flex; align-items: center; width: 300px; border: 1px solid #C8E6C9; margin-top: 10px;}
+        .search-bar input { border: none; background: transparent; width: 100%; outline: none; margin-left: 10px; font-size: 0.9rem; }
+
+        /* Table Design */
+        .table-container { background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.03); border: 1px solid #e0e0e0; margin-top: 20px; flex-shrink: 0; }
+        
+        /* Columns: Index | Txn ID | User Name | Contact Info | Amount | Method | Status | Date | Action */
+        .table-header { display: grid; grid-template-columns: 0.5fr 1.2fr 2fr 1.5fr 1fr 1fr 1.2fr 1fr 1fr; background-color: #C8E6C9; padding: 15px; font-weight: 700; color: #1B5E20; font-size: 0.95rem; }
+        .table-row { display: grid; grid-template-columns: 0.5fr 1.2fr 2fr 1.5fr 1fr 1fr 1.2fr 1fr 1fr; padding: 15px; border-bottom: 1px solid #f0f0f0; align-items: center; font-size: 0.9rem; transition: 0.2s; }
+        .table-row:hover { background-color: #f9f9f9; }
+        
+        /* User Column Styling */
+        .user-name-text { font-weight: 700; color: #000; font-size: 1rem; }
+        .contact-text { font-size: 0.8rem; color: #666; display: block; }
+
+        /* Status Styles */
+        .badge { padding: 5px 10px; border-radius: 8px; font-size: 0.8rem; font-weight: 700; text-transform: uppercase; display: inline-block; text-align: center; }
+        .bg-success { background: #e8f5e9; color: #2e7d32; border: 1px solid #c8e6c9; }
+        .bg-preparing { background: #e3f2fd; color: #1565c0; border: 1px solid #bbdefb; }
+        .bg-delayed { background: #fff3e0; color: #e65100; border: 1px solid #ffe0b2; } /* NEW FOR DELAY */
+        .bg-failed { background: #ffebee; color: #c62828; border: 1px solid #ffcdd2; }
+        .bg-refunded { background: #f3e5f5; color: #7b1fa2; border: 1px solid #e1bee7; }
+
+        /* Actions */
+        .action-group { display: flex; gap: 8px; justify-content: center; }
+        .btn-icon { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.2s; border: 1px solid #ddd; background: white; color: #555; }
+        .btn-icon:hover { background: #eee; color: #000; }
+
+        /* --- RIGHT PANEL STYLES (NEW) --- */
+        .right-panel {
+            position: fixed; top: 0; right: -600px; width: 500px; height: 100vh;
+            background-color: #fff; z-index: 2000; box-shadow: -5px 0 30px rgba(0,0,0,0.15);
+            transition: right 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+            display: flex; flex-direction: column; border-left: 5px solid #4caf50;
+        }
+        .right-panel.open { right: 0; }
+        .panel-header { padding: 20px; background: #E7F3EB; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #ddd; }
+        .panel-content { flex: 1; overflow-y: auto; padding: 25px; }
+
+        /* Timeline & Sections */
+        .section-title { font-size: 1rem; font-weight: 700; color: #333; margin: 25px 0 10px 0; border-bottom: 2px solid #e0e0e0; padding-bottom: 5px; }
+        
+        .item-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px dashed #eee; font-size: 0.95rem; }
+        .item-name { font-weight: 500; }
+        
+        .timeline { margin-top: 15px; position: relative; padding-left: 15px; }
+        .tl-item { position: relative; padding-left: 25px; padding-bottom: 20px; border-left: 2px solid #e0e0e0; }
+        .tl-item:last-child { border-left: none; }
+        .tl-dot { position: absolute; left: -6px; top: 0; width: 14px; height: 14px; border-radius: 50%; background: #ccc; border: 2px solid #fff; box-shadow: 0 0 0 1px #ccc; }
+        .tl-item.active .tl-dot { background: #4caf50; box-shadow: 0 0 0 1px #4caf50; }
+        .tl-item.warn .tl-dot { background: #ff9800; box-shadow: 0 0 0 1px #ff9800; }
+        .tl-time { font-size: 0.75rem; color: #888; display: block; margin-top: 3px; }
+
+        /* Admin Action Buttons */
+        .admin-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 20px; }
+        .btn-action { padding: 12px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; transition: 0.2s; font-size:0.9rem; }
+        .btn-add-time { background: #fff3e0; color: #e65100; border: 1px solid #ffe0b2; }
+        .btn-add-time:hover { background: #ffe0b2; }
+        .btn-refund { background: #ffebee; color: #c62828; border: 1px solid #ffcdd2; }
+        .btn-refund:hover { background: #ffcdd2; }
+
+    </style>
+</head>
+<body>
+
+    <aside class="sidebar">
+        <div class="logo">CampusServe</div>
+        <ul class="nav-links">
+            <li><a href="2dashboard.html">Dashboard</a></li>
+            <li><a href="3order_management.html">Orders</a></li>
+            <li><a href="4menu_management.html">Menu Management</a></li>
+            <li><a href="13transaction.html" class="active">Transactions</a></li>
+            <li><a href="6users.html">Users</a></li>
+            <li><a href="5analytics.html">Analytics</a></li>
+            <li><a href="11announcement.html">Announcements</a></li>
+                    <li><a href="15deals.html">Combo / Deals</a></li>
+            <li><a href="9settings.html">Settings</a></li>
+        </ul>
+    </aside>
+
+    <main class="main-content">
+        <header>
+            <h2 class="page-title">Transactions</h2>
+            <div style="display:flex; flex-direction:column; align-items:flex-end; gap:10px;">
+                <div class="filter-group">
+                    <button class="filter-btn active" onclick="applyFilter('All')">All</button>
+                    <button class="filter-btn" onclick="applyFilter('Success')">Success</button>
+                    <button class="filter-btn" onclick="applyFilter('Preparing')">Preparing</button>
+                    <button class="filter-btn" onclick="applyFilter('Refunded')">Refunded</button>
+                    <button class="filter-btn" onclick="applyFilter('Failed')">Failed</button>
+                </div>
+                <div class="search-bar">
+                    <i class="fas fa-search" style="color:#aaa;"></i>
+                    <input type="text" id="searchTxn" placeholder="Search by Name or ID..." onkeyup="filterTable()">
+                </div>
+            </div>
+        </header>
+
+        <div class="table-container">
+            <div class="table-header">
+                <div>#</div>
+                <div>Txn ID</div>
+                <div>User Name</div>
+                <div>Contact</div>
+                <div>Amount</div>
+                <div>Method</div>
+                <div>Status</div>
+                <div>Date</div>
+                <div style="text-align:center;">Action</div>
+            </div>
+            <div id="tableBody">
+                <div style="padding:40px; text-align:center; color:#999;">Loading Data...</div>
+            </div>
+        </div>
+    </main>
+
+    <aside class="right-panel" id="detailPanel">
+        <div class="panel-header">
+            <div class="panel-title">Transaction Details</div>
+            <i class="fas fa-times" style="cursor:pointer; font-size:1.5rem;" onclick="closePanel()"></i>
+        </div>
+        <div class="panel-content" id="panelContent"></div>
+    </aside>
+
+    <script>
+        // --- 1. FIREBASE CONFIG ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyCD0BToDMJREYOlTSpxNihP__c4uC0tvnY",
+            projectId: "campusserve-5f138",
+            appId: "1:169392088588:web:6af9c03ce5c02fa4433029"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        let allData = [];
+        let currentFilter = 'All';
+
+        // --- 2. FETCH DATA (EXACT LOGIC PRESERVED) ---
+        async function fetchData() {
+            try {
+                document.getElementById('tableBody').innerHTML = '<div style="padding:40px; text-align:center; color:#999;"><i class="fas fa-spinner fa-spin"></i> Loading...</div>';
+
+                // A. FETCH EVERYTHING AT ONCE
+                const [txnSnap, userSnap, orderSnap] = await Promise.all([
+                    db.collection("transactions").orderBy("timestamp", "desc").limit(50).get(),
+                    db.collection("users").get(),
+                    db.collection("orders").orderBy("timestamp", "desc").limit(50).get()
+                ]);
+
+                // B. BUILD USER "PHONEBOOK"
+                const usersMap = {};
+                userSnap.forEach(doc => {
+                    const d = doc.data();
+                    const name = d.name || d.displayName || d.fullName || d.userName || d.username || "Unknown";
+                    const email = d.email || "";
+                    const phone = d.phone || d.phoneNumber || d.mobile || "";
+                    const record = { name: name, email: email, phone: phone };
+
+                    usersMap[doc.id] = record;
+                    if (d.uid) usersMap[d.uid] = record;
+                    if (d.userId) usersMap[d.userId] = record;
+                });
+                console.log("Users Phonebook Loaded:", Object.keys(usersMap).length);
+
+                // C. BUILD ORDERS MAP
+                const ordersMap = {};
+                orderSnap.forEach(doc => {
+                    const d = doc.data();
+                    d._docId = doc.id; // Store doc id for Admin Actions
+                    ordersMap[doc.id] = d;
+                    if (d.txnId) ordersMap[d.txnId] = d;
+                    if (d.transactionId) ordersMap[d.transactionId] = d;
+                    if (d.orderId) ordersMap[d.orderId] = d;
+                    if (d.orderId && !ordersMap[`txn_${d.orderId}`]) {
+                        ordersMap[`txn_${d.orderId}`] = d;
+                    }
+                });
+
+                // D. MERGE DATA (THE FIX)
+                allData = txnSnap.docs.map(doc => {
+                    const t = doc.data();
+                    const userId = t.userId || t.uid || t.userUid || t.customerId || (t.user && (t.user.id || t.user.uid)) || null;
+
+                    // 1. Default Data
+                    let displayName = t.userName || "Guest";
+                    let displayEmail = t.email || "";
+                    let displayPhone = t.phone || "";
+
+                    // 3. Link Order
+                    let linkedOrder = ordersMap[t.transactionId] || ordersMap[t.orderId] || ordersMap[doc.id];
+                    if (!linkedOrder && typeof t.transactionId === "string" && t.transactionId.startsWith("txn_ORDER_")) {
+                        const orderKey = t.transactionId.replace(/^txn_/, ""); 
+                        linkedOrder = ordersMap[orderKey] || linkedOrder;
+                    }
+
+                    const orderUserId = linkedOrder?.userId || linkedOrder?.uid || linkedOrder?.userUid || (linkedOrder?.user && (linkedOrder.user.id || linkedOrder.user.uid)) || null;
+
+                    // 2. FORCE NAME FROM PHONEBOOK
+                    const finalUserId = orderUserId || userId;
+                    if (finalUserId && usersMap[finalUserId]) {
+                        displayName = usersMap[finalUserId].name || displayName;
+                        displayEmail = usersMap[finalUserId].email || displayEmail;
+                        displayPhone = usersMap[finalUserId].phone || displayPhone;
+                    }
+
+                    // Fallback Contact
+                    if ((!displayEmail || !displayPhone) && linkedOrder) {
+                        displayEmail = displayEmail || linkedOrder.email || linkedOrder.userEmail || "";
+                        displayPhone = displayPhone || linkedOrder.phone || linkedOrder.phoneNumber || "";
+                    }
+
+                    // Status Logic
+                    let displayStatus = t.status || 'Success';
+                    if (linkedOrder) {
+                        if (linkedOrder.status === 'Preparing') displayStatus = 'Preparing';
+                        if (linkedOrder.status === 'Delayed') displayStatus = 'Delayed';
+                        if (linkedOrder.isRescheduled) displayStatus = 'Rescheduled';
+                    }
+                    if (t.status === 'Refunded') displayStatus = 'Refunded';
+
+                    return {
+                        id: doc.id,
+                        ...t,
+                        userName: displayName,
+                        userEmail: displayEmail,
+                        userPhone: displayPhone,
+                        displayStatus: displayStatus,
+                        linkedOrder: linkedOrder
+                    };
+                });
+
+                renderTable();
+
+            } catch (e) {
+                console.error("Error:", e);
+                document.getElementById('tableBody').innerHTML = `<div style="padding:20px;color:red">Error: ${e.message}</div>`;
+            }
+        }
+
+        // --- 3. RENDER TABLE ---
+        function renderTable() {
+            const tbody = document.getElementById('tableBody');
+            const term = document.getElementById('searchTxn').value.toLowerCase();
+            tbody.innerHTML = "";
+
+            const filtered = allData.filter(item => {
+                if (currentFilter !== 'All' && item.displayStatus !== currentFilter) return false;
+                return item.userName.toLowerCase().includes(term) || (item.transactionId || "").toLowerCase().includes(term);
+            });
+
+            if (filtered.length === 0) {
+                tbody.innerHTML = '<div style="padding:40px; text-align:center; color:#999;">No records found.</div>';
+                return;
+            }
+
+            filtered.forEach((item, i) => {
+                let badgeClass = 'bg-success';
+                if (item.displayStatus === 'Failed') badgeClass = 'bg-failed';
+                if (item.displayStatus === 'Refunded') badgeClass = 'bg-refunded';
+                if (item.displayStatus === 'Preparing') badgeClass = 'bg-preparing';
+                if (item.displayStatus === 'Delayed') badgeClass = 'bg-delayed';
+
+                const date = item.timestamp ? new Date(item.timestamp.seconds * 1000).toLocaleDateString() : '-';
+                const txnId = item.transactionId || item.id;
+
+                tbody.innerHTML += `
+                    <div class="table-row">
+                        <div>${i + 1}</div>
+                        <div style="font-family:monospace; color:#555;" title="${txnId}">
+                            ${txnId.substring(0, 10)}...
+                        </div>
+                        <div class="user-name-text">${item.userName}</div>
+                        <div>
+                            <span class="contact-text">${item.userEmail}</span>
+                            <span class="contact-text">${item.userPhone}</span>
+                        </div>
+                        <div style="font-weight:700; color:${item.type === 'Debit' ? '#d32f2f' : '#2e7d32'}">
+                            ${item.type === 'Debit' ? '-' : '+'} ₹${item.amount}
+                        </div>
+                        <div>${item.method || 'Wallet'}</div>
+                        <div><span class="badge ${badgeClass}">${item.displayStatus}</span></div>
+                        <div style="font-size:0.85rem; color:#888;">${date}</div>
+                        <div class="action-group">
+                            <div class="btn-icon" onclick="openPanel('${item.id}')"><i class="fas fa-eye"></i></div>
+                            <div class="btn-icon" onclick="generatePDF('${item.id}')" style="color:#d32f2f; border-color:#ffcdd2"><i class="fas fa-file-pdf"></i></div>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        // --- 4. EXTRAS: RIGHT PANEL & ACTIONS ---
+        function openPanel(id) {
+            const item = allData.find(d => d.id === id);
+            document.getElementById('detailPanel').classList.add('open');
+            const content = document.getElementById('panelContent');
+
+            // 1. Basic Info Card
+            let html = `
+                <div style="background:#f9f9f9; padding:15px; border-radius:10px; margin-bottom:20px; border:1px solid #eee;">
+                    <h3 style="margin:0 0 5px 0;">${item.userName}</h3>
+                    <p style="margin:0; color:#666;">${item.userEmail}</p>
+                    <p style="margin:0; color:#666;">${item.userPhone}</p>
+                    <hr style="border:0; border-top:1px dashed #ddd; margin:10px 0;">
+                    <div style="display:flex; justify-content:space-between;">
+                        <span>Amount Paid:</span>
+                        <span style="color:#007E00; font-weight:bold;">₹${item.amount}</span>
+                    </div>
+                    <div style="display:flex; justify-content:space-between;">
+                        <span>Method:</span>
+                        <span>${item.method || 'Wallet'}</span>
+                    </div>
+                </div>
+            `;
+
+            // 2. Order Items (Only if linked)
+            if (item.linkedOrder && item.linkedOrder.items) {
+                html += `<div class="section-title">Order Details</div>`;
+                item.linkedOrder.items.forEach(food => {
+                    const qty = food.quantity || 1;
+                    const price = food.price || 0;
+                    html += `
+                        <div class="item-row">
+                            <span class="item-name">${food.name || food.title} <span style="color:#888; font-size:0.85rem;">x${qty}</span></span>
+                            <span>₹${price * qty}</span>
+                        </div>
+                    `;
+                });
+            } else {
+                html += `<div style="color:#999; font-style:italic; margin-bottom:20px;">No specific order items linked.</div>`;
+            }
+
+            // 3. Timeline
+            const orderTime = item.linkedOrder ? new Date(item.linkedOrder.timestamp.seconds*1000).toLocaleTimeString() : 'N/A';
+            const status = item.displayStatus;
+
+            html += `<div class="section-title">Timeline & Status</div>
+                <div class="timeline">
+                    <div class="tl-item active">
+                        <div class="tl-dot"></div>
+                        <strong>Order Placed / Paid</strong>
+                        <span class="tl-time">${orderTime}</span>
+                    </div>`;
+
+            if (item.linkedOrder && item.linkedOrder.isRescheduled) {
+                html += `<div class="tl-item warn">
+                    <div class="tl-dot"></div>
+                    <strong>Rescheduled</strong>
+                    <span class="tl-time">User requested change</span>
+                </div>`;
+            }
+
+            if (status === 'Delayed') {
+                html += `<div class="tl-item warn">
+                    <div class="tl-dot"></div>
+                    <strong>Delayed (+Time)</strong>
+                    <span class="tl-time">Kitchen added time</span>
+                </div>`;
+            }
+
+            if (status === 'Refunded') {
+                html += `<div class="tl-item">
+                    <div class="tl-dot"></div>
+                    <strong style="color:#d32f2f;">Refunded</strong>
+                    <span class="tl-time">Returned to ${item.method || 'Wallet'}</span>
+                </div>`;
+            } else if (status === 'Success' || status === 'Preparing') {
+                 html += `<div class="tl-item">
+                    <div class="tl-dot"></div>
+                    <strong>Processing</strong>
+                    <span class="tl-time">In Progress</span>
+                </div>`;
+            }
+
+            html += `</div>`;
+
+            // 4. Admin Actions
+            // Only show actions if order is linked and not already refunded/completed
+            if (item.linkedOrder && status !== 'Refunded' && status !== 'Completed' && status !== 'Cancelled') {
+                html += `
+                    <div class="section-title">Kitchen Actions</div>
+                    <div class="admin-actions">
+                        <button class="btn-action btn-add-time" onclick="addTime('${item.linkedOrder._docId}', 5)">+5 Min Delay</button>
+                        <button class="btn-action btn-add-time" onclick="addTime('${item.linkedOrder._docId}', 10)">+10 Min Delay</button>
+                        <button class="btn-action btn-refund" onclick="processRefund('${item.id}', '${item.method}')">Refund Order</button>
+                    </div>
+                `;
+            }
+
+            content.innerHTML = html;
+        }
+
+        // --- ACTION FUNCTIONS ---
+        async function addTime(orderId, mins) {
+            if(!confirm(`Add ${mins} minutes to this order? (Status will change to Delayed)`)) return;
+            try {
+                await db.collection('orders').doc(orderId).update({
+                    status: 'Delayed',
+                    delayReason: `Kitchen added +${mins} mins`,
+                    extendedTime: mins
+                });
+                alert("Time Added Successfully!");
+                fetchData(); // Refresh table
+                closePanel();
+            } catch(e) { alert("Error: " + e.message); }
+        }
+
+        async function processRefund(txnId, method) {
+            if(!confirm(`Refund this transaction back to ${method}?`)) return;
+            try {
+                await db.collection('transactions').doc(txnId).update({ status: 'Refunded' });
+                alert("Refund Processed!");
+                fetchData(); // Refresh table
+                closePanel();
+            } catch(e) { alert("Error: " + e.message); }
+        }
+
+        function closePanel() { document.getElementById('detailPanel').classList.remove('open'); }
+        function applyFilter(f) { currentFilter = f; document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active')); event.target.classList.add('active'); renderTable(); }
+        function filterTable() { renderTable(); }
+        
+        function generatePDF(id) {
+            const item = allData.find(d => d.id === id);
+            const doc = new window.jspdf.jsPDF();
+            doc.text(`Invoice: ${id}`, 10, 10);
+            doc.text(`User: ${item.userName}`, 10, 20);
+            doc.text(`Amount: ${item.amount}`, 10, 30);
+            doc.save(`Invoice_${id}.pdf`);
+        }
+
+        fetchData();
+    </script>
+</body>
+</html>

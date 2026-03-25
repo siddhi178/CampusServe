@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Order History - CampusServe</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        /* --- THEME VARIABLES --- */
+        :root {
+            --bg-color: #f4f7f6;
+            --sidebar-bg: #e8f5e9;
+            --primary-green: #4caf50;
+            --dark-green: #1b5e20;
+            --text-dark: #333;
+            --card-radius: 12px;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
+        body { display: flex; height: 100vh; background-color: var(--bg-color); overflow: hidden; }
+
+        /* --- SIDEBAR --- */
+        .sidebar {
+            width: 250px; background-color: #E7F3EB; padding: 20px;
+            display: flex; flex-direction: column; border-right: 1px solid #dcdcdc;
+        }
+        .logo { color: #007E00; font-size: 1.5rem; font-weight: bold; margin-bottom: 40px; text-align: center; }
+        .nav-links { list-style: none; }
+        .nav-links li { margin-bottom: 15px; }
+        .nav-links a { text-decoration: none; color: var(--text-dark); font-size: 1rem; font-weight: 500; display: block; padding: 10px 15px; border-radius: 16px; transition: 0.3s; }
+        .nav-links a.active { background-color: #fff; color: #016301; font-size: 18px; font-weight: bold; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .nav-links a:hover { background-color: #c8e6c9; }
+
+        /* --- MAIN CONTENT --- */
+        .main-content { flex: 1; padding: 25px 35px; overflow-y: auto; display: flex; flex-direction: column; }
+
+        /* HEADER */
+        header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; }
+        .page-title h1 { font-size: 1.8rem; color: #1b5e20; margin-bottom: 5px; }
+        .page-title p { font-size: 0.9rem; color: #666; }
+        
+        /* FILTERS TOOLBAR */
+        .history-toolbar {
+            background: #fff; padding: 15px 20px; border-radius: 12px; margin-bottom: 25px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.03); display: flex; justify-content: space-between; align-items: center;
+        }
+        
+        .filter-group { display: flex; gap: 15px; align-items: center; }
+        
+        .search-box {
+            background: #f4f7f6; padding: 10px 15px; border-radius: 8px; border: 1px solid #ddd;
+            display: flex; align-items: center; width: 250px;
+        }
+        .search-box input { border: none; background: transparent; outline: none; width: 100%; margin-left: 10px; font-size: 0.9rem; }
+        
+        .date-filter select {
+            padding: 10px 15px; border-radius: 8px; border: 1px solid #ddd; outline: none; cursor: pointer; color: #555; background: #fff;
+        }
+
+        .btn-export {
+            background: #1b5e20; color: white; border: none; padding: 10px 20px; border-radius: 8px; 
+            font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: 0.2s;
+        }
+        .btn-export:hover { background: #2e7d32; }
+
+        /* HISTORY TABLE */
+        .table-card { background: #fff; padding: 0; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.03); overflow: hidden; }
+        
+        table { width: 100%; border-collapse: collapse; }
+        thead { background-color: #e8f5e9; }
+        th { text-align: left; padding: 15px 20px; color: #1b5e20; font-size: 0.9rem; font-weight: 700; border-bottom: 2px solid #c8e6c9; }
+        td { padding: 15px 20px; border-bottom: 1px solid #f0f0f0; color: #333; font-size: 0.9rem; vertical-align: middle; }
+        tr:hover { background-color: #fcfcfc; }
+
+        .token-cell { font-weight: bold; color: #1b5e20; font-size: 1rem; }
+        .items-cell { max-width: 250px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #555; }
+        
+        /* Status Badges */
+        .status-badge { padding: 5px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: bold; display: inline-block; }
+        .st-completed { background: #e8f5e9; color: #2e7d32; border: 1px solid #c8e6c9; }
+        .st-cancelled { background: #ffebee; color: #c62828; border: 1px solid #ef9a9a; }
+
+        /* Action Buttons */
+        .action-btn-sm {
+            width: 35px; height: 35px; border-radius: 6px; border: 1px solid #ddd; background: #fff;
+            color: #555; cursor: pointer; transition: 0.2s; font-size: 1rem;
+        }
+        .action-btn-sm:hover { background: #f5f5f5; color: #1b5e20; border-color: #1b5e20; }
+
+        /* PAGINATION */
+        .pagination { display: flex; justify-content: flex-end; padding: 20px; gap: 5px; }
+        .page-btn { padding: 5px 12px; border: 1px solid #ddd; background: #fff; border-radius: 4px; cursor: pointer; }
+        .page-btn.active { background: #1b5e20; color: white; border-color: #1b5e20; }
+
+        /* --- INVOICE MODAL --- */
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 2000; justify-content: center; align-items: center; backdrop-filter: blur(3px); }
+        .modal-overlay.show { display: flex; }
+        .invoice-box { background: #fff; width: 450px; padding: 30px; border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); animation: popIn 0.3s ease; position: relative; }
+        
+        @keyframes popIn { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+        .invoice-header { text-align: center; border-bottom: 2px dashed #ddd; padding-bottom: 20px; margin-bottom: 20px; }
+        .invoice-logo { color: #1b5e20; font-size: 1.8rem; font-weight: bold; margin-bottom: 5px; }
+        .invoice-meta { display: flex; justify-content: space-between; font-size: 0.85rem; color: #666; margin-bottom: 10px; }
+        
+        .invoice-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+        .invoice-table th { text-align: left; font-size: 0.85rem; border-bottom: 1px solid #ddd; padding: 8px 0; color: #333; }
+        .invoice-table td { font-size: 0.9rem; padding: 8px 0; border-bottom: 1px solid #eee; color: #555; }
+        .invoice-total { display: flex; justify-content: space-between; font-weight: bold; font-size: 1.1rem; border-top: 2px solid #333; padding-top: 10px; color: #1b5e20; }
+        
+        .invoice-footer { text-align: center; font-size: 0.8rem; color: #888; margin-top: 20px; }
+        
+        .invoice-actions { display: flex; gap: 10px; margin-top: 20px; }
+        .btn-print { flex: 1; background: #333; color: white; border: none; padding: 10px; border-radius: 6px; cursor: pointer; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 8px; }
+        .btn-print:hover { background: #000; }
+        .btn-close { flex: 1; background: #eee; color: #333; border: none; padding: 10px; border-radius: 6px; cursor: pointer; font-weight: bold; }
+
+    </style>
+</head>
+<body>
+
+    <aside class="sidebar">
+        <div class="logo">CampusServe<br>Canteen</div>
+        <ul class="nav-links">
+            <li><a href="2dashboard.html">Dashboard</a></li>
+            <li><a href="3order_management.html">Orders</a></li>
+            <li><a href="4menu_management.html">Menu Management</a></li>
+            <li><a href="13transaction.html">Transactions</a></li>
+            <li><a href="6users.html">Users</a></li>
+            <li><a href="5analytics.html">Analytics</a></li>
+            <li><a href="11announcement.html">Announcements</a></li>
+                    <li><a href="15deals.html">Combo / Deals</a></li>
+            <li><a href="9settings.html">Settings</a></li>
+        </ul>
+    </aside>
+
+    <main class="main-content">
+        <header>
+            <div class="page-title">
+                <h1>Order History</h1>
+                <p>Archive of all completed transactions.</p>
+            </div>
+            <div style="display:flex; gap:15px; align-items:center;">
+                <div style="background:#fff; padding:8px 15px; border-radius:20px; font-weight:bold; color:#1b5e20; box-shadow:0 2px 5px rgba(0,0,0,0.05);">
+                    Records: 1,240
+                </div>
+            </div>
+        </header>
+
+        <div class="history-toolbar">
+            <div class="filter-group">
+                <div class="search-box">
+                    <i class="fas fa-search" style="color:#aaa;"></i>
+                    <input type="text" id="historySearch" placeholder="Search Order ID..." onkeyup="filterTable()">
+                </div>
+                <div class="date-filter">
+                    <select id="dateFilter">
+                        <option value="today">Today</option>
+                        <option value="week">Last 7 Days</option>
+                        <option value="month">Last 30 Days</option>
+                    </select>
+                </div>
+            </div>
+            <button class="btn-export">
+                <i class="fas fa-file-csv"></i> Export CSV
+            </button>
+        </div>
+
+        <div class="table-card">
+            <table id="historyTable">
+                <thead>
+                    <tr>
+                        <th>Order ID</th>
+                        <th>Token</th>
+                        <th>Date & Time</th>
+                        <th>Customer</th>
+                        <th>Items Summary</th>
+                        <th>Total</th>
+                        <th>Method</th>
+                        <th>Status</th>
+                        <th>Invoice</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>#16220</td>
+                        <td class="token-cell">A12</td>
+                        <td>Dec 20, 10:30 AM</td>
+                        <td>Rahul Verma</td>
+                        <td class="items-cell">2x Coffee, 1x Sandwich</td>
+                        <td>₹100</td>
+                        <td>UPI</td>
+                        <td><span class="status-badge st-completed">Completed</span></td>
+                        <td>
+                            <button class="action-btn-sm" onclick="openInvoice('#16220', 'Rahul Verma', 'Dec 20, 2025', 'UPI')" title="View Invoice">
+                                <i class="fas fa-file-invoice"></i>
+                            </button>
+                        </td>
+                    </tr>
+                    
+                    <tr>
+                        <td>#16219</td>
+                        <td class="token-cell">A11</td>
+                        <td>Dec 20, 10:15 AM</td>
+                        <td>Priya Sharma</td>
+                        <td class="items-cell">1x Masala Dosa</td>
+                        <td>₹60</td>
+                        <td>Cash</td>
+                        <td><span class="status-badge st-completed">Completed</span></td>
+                        <td>
+                            <button class="action-btn-sm" onclick="openInvoice('#16219', 'Priya Sharma', 'Dec 20, 2025', 'Cash')" title="View Invoice">
+                                <i class="fas fa-file-invoice"></i>
+                            </button>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <td>#16218</td>
+                        <td class="token-cell">A10</td>
+                        <td>Dec 20, 09:45 AM</td>
+                        <td>Amit Kumar</td>
+                        <td class="items-cell">3x Samosa</td>
+                        <td>₹45</td>
+                        <td>UPI</td>
+                        <td><span class="status-badge st-cancelled">Cancelled</span></td>
+                        <td>
+                            <button class="action-btn-sm" style="opacity:0.5; cursor:not-allowed;" title="No Invoice"><i class="fas fa-ban"></i></button>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+            
+            <div class="pagination">
+                <button class="page-btn active">1</button>
+                <button class="page-btn">2</button>
+                <button class="page-btn">Next &raquo;</button>
+            </div>
+        </div>
+
+    </main>
+
+    <div class="modal-overlay" id="invoiceModal">
+        <div class="invoice-box" id="printableArea">
+            <div class="invoice-header">
+                <div class="invoice-logo"><i class="fas fa-utensils"></i> CampusServe</div>
+                <div style="font-size:0.9rem; color:#555;">University Main Canteen, Block A</div>
+                <div style="font-size:0.8rem; color:#888;">+91 98765 43210</div>
+            </div>
+            
+            <div class="invoice-meta">
+                <div>
+                    <strong>Order ID:</strong> <span id="invId">#0000</span><br>
+                    <strong>Date:</strong> <span id="invDate">Jan 01</span>
+                </div>
+                <div style="text-align:right;">
+                    <strong>Customer:</strong> <span id="invName">User</span><br>
+                    <strong>Payment:</strong> <span id="invPay">Cash</span>
+                </div>
+            </div>
+
+            <table class="invoice-table">
+                <thead><tr><th>Item</th><th style="text-align:center;">Qty</th><th style="text-align:right;">Price</th></tr></thead>
+                <tbody id="invItems">
+                    </tbody>
+            </table>
+
+            <div class="invoice-total">
+                <span>Total Amount</span>
+                <span id="invTotal">₹0</span>
+            </div>
+
+            <div class="invoice-footer">
+                Thank you for dining with us!<br>
+                This is a computer generated receipt.
+            </div>
+
+            <div class="invoice-actions no-print">
+                <button class="btn-close" onclick="closeInvoice()">Close</button>
+                <button class="btn-print" onclick="window.print()"><i class="fas fa-print"></i> Print</button>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        @media print {
+            body * { visibility: hidden; }
+            #printableArea, #printableArea * { visibility: visible; }
+            #printableArea { position: absolute; left: 0; top: 0; width: 100%; box-shadow: none; border: none; }
+            .no-print { display: none !important; }
+            .modal-overlay { background: white; }
+        }
+    </style>
+
+    <script>
+        // --- OPEN INVOICE ---
+        function openInvoice(id, name, date, pay) {
+            document.getElementById('invoiceModal').classList.add('show');
+            document.getElementById('invId').innerText = id;
+            document.getElementById('invName').innerText = name;
+            document.getElementById('invDate').innerText = date;
+            document.getElementById('invPay').innerText = pay;
+
+            // Mock Data Generator for Invoice Items based on row
+            // In real app, you would fetch this via API
+            const tbody = document.getElementById('invItems');
+            let total = 0;
+            let itemsHTML = '';
+            
+            // Randomly generating items for demo feel
+            if(id === '#16220') {
+                itemsHTML += `<tr><td>Cold Coffee</td><td style="text-align:center;">2</td><td style="text-align:right;">₹80</td></tr>`;
+                itemsHTML += `<tr><td>Veg Sandwich</td><td style="text-align:center;">1</td><td style="text-align:right;">₹20</td></tr>`;
+                total = 100;
+            } else {
+                itemsHTML += `<tr><td>Masala Dosa</td><td style="text-align:center;">1</td><td style="text-align:right;">₹60</td></tr>`;
+                total = 60;
+            }
+
+            tbody.innerHTML = itemsHTML;
+            document.getElementById('invTotal').innerText = '₹' + total;
+        }
+
+        function closeInvoice() {
+            document.getElementById('invoiceModal').classList.remove('show');
+        }
+
+        // --- FILTER ---
+        function filterTable() {
+            const input = document.getElementById('historySearch');
+            const filter = input.value.toLowerCase();
+            const rows = document.querySelectorAll("#historyTable tbody tr");
+
+            rows.forEach(row => {
+                const id = row.cells[0].innerText.toLowerCase();
+                if(id.includes(filter)) {
+                    row.style.display = "";
+                } else {
+                    row.style.display = "none";
+                }
+            });
+        }
+    </script>
+</body>
+</html>

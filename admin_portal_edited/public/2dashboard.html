@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - CampusServe</title>
+    
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --bg-color: #f4f7f6;
+            --theme-dark: #1A6922;      
+            --theme-medium: #A3CCA3;    
+            --theme-light: #BEDFC8;     
+            --theme-pale: #C1E1CA;      
+            --panel-bg: #ecf7f0; 
+            --bg-white: #ffffff;        
+            --text-dark: #1A6922;
+            --text-grey: #5f6e5f;
+            --card-radius: 20px;
+            --card-shadow: 0 10px 30px rgba(26, 105, 34, 0.05);
+            --hover-shadow: 0 15px 35px rgba(26, 105, 34, 0.15);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body { 
+            display: flex; 
+            height: 100vh; 
+            background-color: var(--bg-color); 
+            overflow: hidden; 
+            font-family: 'Poppins', sans-serif;
+        }
+
+       /* --- SIDEBAR --- */
+      .sidebar {
+        width: 250px;
+        background-color: #e7f3eb;
+        padding: 20px;
+        display: flex;
+        flex-direction: column;
+        border-right: 1px solid #dcdcdc;
+      }
+      .logo {
+        color: #007e00;
+        font-size: 1.5rem;
+        font-weight: bold;
+        margin-bottom: 40px;
+        text-align: center;
+        cursor: default;
+      }
+      .nav-links {
+        list-style: none;
+      }
+      .nav-links li {
+        margin-bottom: 15px;
+      }
+     .nav-links a {
+    text-decoration: none;
+    color: black;
+    font-size: 1rem;
+    font-weight: 500;
+    display: block;
+    padding: 10px 15px;
+    border-radius: 16px;
+    transition: 0.3s;
+    cursor: pointer;
+}
+      .nav-links a.active {
+        background-color: #fff;
+        color: #016301;
+        font-size: 18px;
+        font-weight: bold;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+      }
+      .nav-links a:hover {
+        background-color: #c8e6c9;
+      }
+
+        /* --- MAIN CONTENT --- */
+        .main-content { 
+            flex: 1; 
+            padding: 25px 35px; 
+            display: flex; 
+            flex-direction: column; 
+            overflow-y: auto;
+        }
+
+        /* --- TOP BAR (FIXED POSITION) --- */
+        .top-bar { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            margin-bottom: 30px; 
+            flex-shrink: 0; 
+        }
+        .live-clock { 
+            background: var(--theme-pale); 
+            padding: 10px 25px; 
+            border-radius: 50px; 
+            font-weight: 700; 
+            color: var(--theme-dark); 
+            border: 1px solid var(--theme-medium);
+        }
+        
+        .user-actions { display: flex; align-items: center; gap: 15px; }
+        .notification { width: 45px; height: 45px; background: #fff; border-radius: 12px; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 5px rgba(0,0,0,0.1); border: 1px solid var(--theme-medium); cursor: pointer;}
+        .notification i {
+    color: #FFD700; /* The yellow color */
+    -webkit-text-stroke: 1px black; /* This adds a 1px black outline to the icon character */
+    font-size: 1.2rem; /* Optional: adjust size to make it look balanced */
+}
+        .menu-toggle-btn { width: 42px; height: 42px; border-radius: 12px; background: var(--theme-pale); color: var(--theme-dark); display: flex; align-items: center; justify-content: center; cursor: pointer; border: 1px solid var(--theme-medium); }
+
+        /* --- DASHBOARD ELEMENTS --- */
+        .dashboard-grid { display: grid; grid-template-columns: 3fr 1.2fr; gap: 30px; }
+        .center-column { display: flex; flex-direction: column; gap: 30px; }
+
+                /* --- NEW STAT CARDS DESIGN --- */
+        .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; }
+        
+        .stat-card { 
+    border-radius: var(--card-radius); 
+    position: relative; 
+    display: flex; 
+    flex-direction: row; 
+    align-items: center; 
+    justify-content: space-between;
+    box-shadow: var(--card-shadow); 
+    padding: 20px 25px; 
+    border-width: 2px;
+    border-style: solid;
+}
+/* --- UNIQUE PERMANENT THEMES --- */
+
+/* Card 1: Total Orders (Blue Theme) */
+.stat-card:nth-child(1) { 
+    background-color: #e3f2fd; 
+    border-color: #2196f3; 
+}
+.stat-card:nth-child(1) h2, 
+.stat-card:nth-child(1) h3, 
+.stat-card:nth-child(1) .stat-icon-large { color: #1565c0; }
+
+/* Card 2: Pending Orders (Deep Orange/Amber Theme) */
+.stat-card:nth-child(2) { 
+    background-color: #fff3e0; 
+    border-color: #ff9800; 
+}
+.stat-card:nth-child(2) h2, 
+.stat-card:nth-child(2) h3, 
+.stat-card:nth-child(2) .stat-icon-large { color: #e65100; }
+
+/* Card 3: Avg. Value (Purple Theme) */
+.stat-card:nth-child(3) { 
+    background-color: #f3e5f5; 
+    border-color: #9c27b0; 
+}
+.stat-card:nth-child(3) h2, 
+.stat-card:nth-child(3) h3, 
+.stat-card:nth-child(3) .stat-icon-large { color: #7b1fa2; }
+
+/* Card 4: Revenue (Rose/Pink Theme) - Distinct from Orange */
+.stat-card:nth-child(4) { background-color: #fef3c7; border-color: #f59b00;}
+.stat-card:nth-child(4) .stat-icon-large { color: #f59e0b; }
+
+/* Ensure icons are positioned well */
+.stat-icon-large {
+    font-size: 2.2rem;
+    opacity: 0.9;
+}
+
+
+/* --- UNIVERSAL TEXT STYLING FOR CARDS --- */
+.stat-card h2 { 
+    color: #2d3436 !important; /* Very Dark Slate - High Contrast */
+    font-size: 2.4rem; 
+    font-weight: 800; 
+    margin: 0;
+}
+
+.stat-card h3 { 
+    color: #636e72 !important; /* Muted Grey-Blue for labels */
+    font-size: 0.85rem; 
+    font-weight: 700; 
+    text-transform: uppercase; 
+    letter-spacing: 0.8px;
+    margin: 0;
+}
+        
+         /* --- CHARTS & CONTAINERS --- */
+        .charts-row { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; } 
+        
+        .chart-container, .table-card, .out-stock-card, .right-column { 
+            background: #ffffff; 
+            padding: 25px; 
+            border-radius: var(--card-radius); 
+            box-shadow: var(--card-shadow); 
+            border: 1px solid var(--theme-medium);
+            transition: all 0.3s ease;
+        }
+
+        .chart-container { height: 380px; display: flex; flex-direction: column; }
+        
+        .chart-container:hover, .table-card:hover, .right-column:hover {
+            box-shadow: var(--hover-shadow);
+            border-color: var(--theme-dark);
+        }
+
+        .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; border-bottom: 1px solid var(--theme-pale); padding-bottom: 10px; }
+        .section-title { font-size: 1.2rem; font-weight: 700; color: var(--theme-dark); display: flex; align-items: center; gap: 10px; }
+        .section-title i { color: var(--theme-medium); }
+        .chart-wrapper { position: relative; flex: 1; display: flex; align-items: center; justify-content: center; }
+            /* --- TABLE --- */
+        .bottom-row { display: grid; grid-template-columns: 6fr 4fr; gap: 20px; align-items: start;}
+        .table-card { max-height: 400px; overflow-y: auto; }
+        
+        table { width: 100%; border-collapse: separate; border-spacing: 0 8px; }
+        th { text-align: left; color: var(--text-grey); font-size: 0.85rem; font-weight: 600; padding: 0 15px; text-transform: uppercase; }
+        
+        tr.table-row-card td { 
+            background: #ffffff; 
+            border-top: 1px solid var(--theme-pale); 
+            border-bottom: 1px solid var(--theme-pale); 
+            padding: 15px; 
+            font-weight: 500; 
+            color: var(--text-dark); 
+            transition: all 0.3s;
+        }
+        
+        tr.table-row-card td:first-child { border-left: 1px solid var(--theme-pale); border-top-left-radius: 12px; border-bottom-left-radius: 12px; }
+        tr.table-row-card td:last-child { border-right: 1px solid var(--theme-pale); border-top-right-radius: 12px; border-bottom-right-radius: 12px; }
+        
+        tr.table-row-card:hover td { 
+            background: var(--theme-pale); 
+            border-color: var(--theme-medium); 
+            transform: scale(1.02);
+            cursor: default;
+        }
+        
+        .food-flex { display: flex; align-items: center; gap: 12px; }
+        .food-img { width: 40px; height: 40px; border-radius: 10px; object-fit: cover; background: #eee; border: 1px solid var(--theme-medium); }
+        .fallback-icon { width: 40px; height: 40px; border-radius: 10px; background: var(--theme-pale); color: var(--theme-dark); display: flex; align-items: center; justify-content: center; }
+
+        /* --- OUT OF STOCK --- */
+        .out-stock-card { cursor: pointer; display: flex; flex-direction: column; height: 100%; padding: 0; overflow: hidden; }
+        
+        .out-stock-card:hover { 
+            transform: translateY(-5px); 
+            box-shadow: var(--hover-shadow); 
+            border-color: #d32f2f;
+        }
+        
+        .stock-header { 
+            background: #fff5f5; 
+            padding: 20px; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            color: #d32f2f; 
+            font-weight: 700; 
+            border-bottom: 1px solid #ffcdd2; 
+        }
+        
+        .stock-list { padding: 15px; flex: 1; overflow-y: auto; background: #fff; }
+        .stock-item {display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px; border-bottom: 1px dashed var(--theme-medium); transition: 0.2s; width: 100%;}
+        .stock-item:hover { background: #fff5f5; padding-left: 15px; }
+        .stock-item-img { width: 40px; height: 40px; border-radius: 8px; object-fit: cover; background: #ffebee; display: block; }
+        .stock-tag { background: #ffebee; color: #c62828; padding: 5px 0px; border-radius: 6px; font-size: 0.75rem; font-weight: 800; width: 100px; text-align: center; flex-shrink: 0; display: inline-block;}
+        .stock-item-name {flex: 1; font-weight: 600; color: #555; font-size: 0.9rem; white-space: normal; line-height: 1.3; margin-right: 10px; text-align: left;}
+/* --- RIGHT COLUMN --- */
+        .right-column { height: 100%; min-height: 600px; display: flex; flex-direction: column; }
+        .recent-list { flex: 1; overflow-y: auto; padding-right: 5px; }
+        
+        .recent-item { display: flex; gap: 15px; padding-bottom: 20px; position: relative; cursor: pointer;}
+        .recent-item::before { content: ''; position: absolute; left: 20px; top: 40px; bottom: 0; width: 2px; background: var(--theme-pale); }
+        .recent-item:last-child::before { display: none; }
+        
+        .recent-icon { 
+            width: 42px; height: 42px; border-radius: 50%; 
+            background: var(--theme-pale); color: var(--theme-dark); 
+            display: flex; align-items: center; justify-content: center; 
+            font-size: 1.1rem; flex-shrink: 0; z-index: 1; 
+            border: 2px solid #fff;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        .recent-content { 
+            flex: 1; 
+            background: #ffffff; 
+            padding: 12px 15px; 
+            border-radius: 14px; 
+            transition: all 0.3s; 
+            border: 1px solid var(--theme-pale); 
+        }
+        
+        .recent-item:hover .recent-content { 
+            background: var(--theme-light); 
+            border-color: var(--theme-medium);
+            transform: translateX(5px);
+        }
+        
+        .recent-item:hover .recent-icon {
+            background: var(--theme-dark);
+            color: #fff;
+        }
+
+        .recent-top { display: flex; justify-content: space-between; margin-bottom: 5px; }
+        .r-user { font-weight: 700; font-size: 0.95rem; color: var(--theme-dark); }
+        .r-price { font-weight: 700; color: var(--theme-dark); }
+        .r-status { font-size: 0.75rem; color: #777; font-weight: 500; text-transform: uppercase; }
+
+        .empty-state { text-align: center; color: var(--theme-medium); margin-top: 40px; font-style: italic; }
+        .loading-overlay { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.9); z-index: 9999; align-items: center; justify-content: center; font-size: 1.5rem; color: var(--theme-dark); font-weight: bold;}
+    /* --- RIGHT PANEL STYLES (NEW) --- */
+
+        .right-panel { position: fixed; top: 0; right: -460px; width: 320px; height: 100vh; background-color: var(--panel-bg); z-index: 2000; box-shadow: -5px 0 15px rgba(0, 0, 0, 0.1); transition: right 0.4s cubic-bezier(0.25, 0.8, 0.25, 1); display: flex; flex-direction: column; overflow-y: auto; }
+        .right-panel.open { right: 0; }
+        .panel-content { display: none; flex-direction: column; padding: 80px 20px 20px 20px; gap: 15px; width: 100%; }
+        .panel-content.active { display: flex; }
+        .panel-btn { background-color: #ffffff; border: 2px solid #e0e0e0; color: #2e7d32; padding: 12px 20px; border-radius: 30px; font-weight: 600; font-size: 0.9rem; text-align: left; cursor: pointer; transition: 0.2s; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05); text-decoration: none; display: block; }
+        .panel-btn:hover { border-color: #4caf50; color: #1b5e20; transform: translateX(5px); }
+        .panel-close-btn { position: absolute; top: 25px; left: 20px; width: 40px; height: 40px; border: 2px solid #1b5e20; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #1b5e20; font-size: 20px; cursor: pointer; z-index: 1100; transition: background-color 0.2s; }
+        .panel-close-btn:hover { background-color: #c8e6c9; }
+    </style>
+</head>
+<body>
+
+    <div class="loading-overlay" id="loadingOverlay"><i class="fas fa-spinner fa-spin"></i> &nbsp; Syncing Data...</div>
+
+    <aside class="right-panel" id="menuSidebar">
+        <div class="panel-close-btn" onclick="toggleMenu()">
+            <i class="fas fa-arrow-right"></i>
+        </div>
+        <div class="panel-content active">
+            <h3 style="color:#1b5e20; margin-bottom:5px; font-size: 1.1rem; font-weight: 700;">Menu Actions</h3>
+            <a href="10feedback.html" class="panel-btn">FeedBacks</a>
+            <a href="8complains.html" class="panel-btn">Complains</a>
+        </div>
+    </aside>
+    
+    <aside class="sidebar">
+      <div class="logo">CampusServe<br />Canteen</div>
+      <ul class="nav-links">
+        <li><a href="2dashboard.html" class="active">Dashboard</a></li>
+        <li><a href="3order_management.html">Orders</a></li>
+        <li><a href="4menu_management.html">Menu Management</a></li>
+        <li><a href="13transaction.html">Transactions</a></li>
+        <li><a href="6users.html">Users</a></li>
+        <li><a href="5analytics.html">Analytics</a></li>
+        <li><a href="11announcement.html">Announcements</a></li>
+                <li><a href="15deals.html">Combo / Deals</a></li>
+
+        <li><a href="9settings.html">Settings</a></li>
+      </ul>
+    </aside>
+
+<main class="main-content">
+        <header class="top-bar">
+            <div id="liveClock" class="live-clock"><i class="far fa-clock"></i> &nbsp; 00:00:00</div>
+            
+            <div class="user-actions">
+                <div class="notification" onclick="window.location.href='14notification.html'"><i class="fa-solid fa-bell"></i></div>
+                <div class="menu-toggle-btn" onclick="toggleMenu()"><i class="fas fa-bars"></i></div>
+            </div>
+        </header>
+
+        <div class="dashboard-grid">
+            <div class="center-column">
+                
+                <div class="stats-row">
+                    <div class="stat-card">
+                        <div class="stat-content">
+                            <h2 id="totalOrders">0</h2>
+                            <h3>Total Orders</h3>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-content">
+                            <h2 id="pendingOrders">0</h2>
+                            <h3>Pending</h3>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-content">
+                            <h2 id="completedOrders">0</h2>
+                            <h3>Completed Orders</h3>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-content">
+                            <h2 id="todayRevenue">₹0</h2>
+                            <h3>Revenue</h3>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="charts-row">
+                    <div class="chart-container">
+                        <div class="section-header">
+                            <div class="section-title"><i class="fas fa-chart-line"></i> Sales Trend</div>
+                        </div>
+                        <div class="chart-wrapper">
+                            <canvas id="ordersChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="chart-container">
+                        <div class="section-header">
+                            <div class="section-title"><i class="fas fa-chart-pie"></i> Categories</div>
+                        </div>
+                        <div class="chart-wrapper">
+                            <canvas id="categoryChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bottom-row">
+                    <div class="table-card">
+                        <div class="section-header">
+                            <div class="section-title"><i class="fas fa-trophy"></i> Best Selling Items</div>
+                        </div>
+                        <table>
+                            <thead><tr><th>Item Details</th><th>Qty</th><th>Revenue</th></tr></thead>
+                            <tbody id="topSellingBody">
+                                <tr><td colspan="3" class="empty-state">Loading data...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <div class="out-stock-card" onclick="window.location.href='4menu_management.html'">
+                        <div class="stock-header">
+                            <span><i class="fas fa-exclamation-circle"></i> Out of Stock</span>
+                            <span id="val-stock" style="background:#fff; color:#d32f2f; padding:2px 8px; border-radius:10px; font-size:0.8rem;">0</span>
+                        </div>
+                        <div class="stock-list" id="outOfStockList">
+                            <div class="empty-state">Checking inventory...</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="right-column">
+                <div class="section-header">
+                    <div class="section-title"><i class="fas fa-history"></i> Recent Activity</div>
+                </div>
+                <div id="recentOrdersList" class="recent-list">
+                    <div class="empty-state">No orders yet.</div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // --- 1. FIREBASE CONFIG ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyCD0BToDMJREYOlTSpxNihP__c4uC0tvnY",
+            authDomain: "campusserve-5f138.firebaseapp.com",
+            projectId: "campusserve-5f138",
+            storageBucket: "campusserve-5f138.firebasestorage.app",
+            messagingSenderId: "169392088588",
+            appId: "1:169392088588:web:6af9c03ce5c02fa4433029"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        const auth = firebase.auth();
+
+        // --- 2. GLOBAL VARS & SETUP ---
+        let ordersChartInstance = null;
+        let categoryChartInstance = null;
+        let menuImages = {}; 
+        // --- AUDIO NOTIFICATION SYSTEM ---
+// This "primes" the browser to allow sounds after your first click
+document.addEventListener('click', () => {
+    const audio = new Audio(); 
+    audio.play().catch(() => {}); 
+}, { once: true });
+
+let lastOrderCount = -1;
+let lastNotifCount = -1;
+let isInitialOrderLoad = true;
+let isInitialNotifLoad = true;
+
+function playNotificationSound() {
+    const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
+    audio.play().catch(e => console.log("Sound blocked by browser. Click anywhere on the page once."));
+}
+
+        auth.onAuthStateChanged(user => {
+            if (!user) window.location.href = "1login.html"; 
+            else {
+                db.collection("menu").get().then(snap => {
+                    snap.forEach(doc => {
+                        const d = doc.data();
+                        if(d.name) menuImages[d.name.trim().toLowerCase()] = d.image_url || d.image || d.imageUrl || '';
+                    });
+                    initDashboard(); 
+                });
+            }
+        });
+
+        setInterval(() => {
+            const now = new Date();
+            document.getElementById('liveClock').innerHTML = `<i class="far fa-clock"></i> &nbsp; ${now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`;
+        }, 1000);
+
+        // --- 3. CHARTS ---
+        const centerTextPlugin = {
+    id: 'centerText',
+    beforeDraw: function(chart) {
+        if (chart.config.type !== 'doughnut') return;
+        var width = chart.width, height = chart.height, ctx = chart.ctx;
+        ctx.restore();
+        
+        var fontSize = (height / 140).toFixed(2);
+        ctx.font = "bold " + fontSize + "em Outfit";
+        ctx.textBaseline = "middle";
+        ctx.fillStyle = "#1A6922"; 
+        
+        // Calculate total, but handle the "No Sales" 0 case
+        var total = chart.config.data.datasets[0].data.reduce((a, b) => a + b, 0);
+        var displayText = (total === 0 || chart.data.labels[0] === 'No Sales Today') ? "0" : total;
+        
+        var textX = Math.round((width - ctx.measureText(displayText).width) / 2);
+        var textY = height / 2;
+        
+        ctx.fillText(displayText, textX, textY);
+        ctx.save();
+    }
+};
+        Chart.register(centerTextPlugin);
+
+        function initCharts(ordersData, labels, categoryData, categoryLabels) {
+            if (ordersChartInstance) ordersChartInstance.destroy(); 
+            if (categoryChartInstance) categoryChartInstance.destroy();
+
+            const ctx1 = document.getElementById('ordersChart').getContext('2d');
+            const gradient = ctx1.createLinearGradient(0, 0, 0, 300);
+            gradient.addColorStop(0, '#BEDFC8');
+            gradient.addColorStop(1, 'rgba(255, 255, 255, 0.0)');
+
+            ordersChartInstance = new Chart(ctx1, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{ 
+                        label: 'Orders', data: ordersData, 
+                        borderColor: '#1A6922', 
+                        backgroundColor: gradient, 
+                        fill: true, tension: 0.4, pointRadius: 2, borderWidth: 3,
+                        pointBackgroundColor: '#1A6922'
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, grid: { borderDash: [5,5] } }, x: { grid: { display: false } } } }
+            });
+
+            const ctx2 = document.getElementById('categoryChart').getContext('2d');
+            categoryChartInstance = new Chart(ctx2, {
+                type: 'doughnut',
+                data: {
+                    labels: categoryLabels,
+                    datasets: [{
+                        data: categoryData,
+                        backgroundColor: ['#1A6922', '#A3CCA3', '#BEDFC8', '#C1E1CA', '#74b9ff'],
+                        borderWidth: 0, hoverOffset: 10, spacing: 5, borderRadius: 10
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, cutout: '75%', layout: { padding: 15 }, plugins: { legend: { position: 'bottom', labels: { usePointStyle: true, boxWidth: 8, font: { size: 11, family:'Outfit' } } } } }
+            });
+        }
+// 1. Move this to the top (outside the function) so it's globally accessible
+let menuInfoMap = {}; 
+
+function initDashboard() {
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+
+    // --- LISTENER A: MENU DATA (Prices & Out of Stock) ---
+    // This runs once at start AND whenever a price or availability changes
+    db.collection('menu').onSnapshot(menuSnap => {
+        const list = document.getElementById('outOfStockList');
+        list.innerHTML = ""; 
+        let outOfStockCount = 0;
+
+        menuSnap.forEach(doc => {
+            const d = doc.data();
+            const nameKey = d.name ? d.name.trim().toLowerCase() : '';
+            
+            // Update the Map for calculations (Fixes your Point #3 redundancy)
+            if (nameKey) {
+                menuInfoMap[nameKey] = {
+                    category: d.category || 'General',
+                    price: parseFloat(d.price) || 0
+                };
+                
+                // Also update global menuImages for the table
+                menuImages[nameKey] = d.image_url || d.image || d.imageUrl || '';
+            }
+
+            // Update "Out of Stock" UI
+            if (d.is_available === false || d.is_available === "false") {
+                outOfStockCount++;
+                const imgUrl = d.image_url || d.image || d.imageUrl || '';
+                const imgHTML = imgUrl 
+                    ? `<img src="${imgUrl}" class="stock-item-img" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">` 
+                    : `<div class="stock-item-img" style="background:#eee;display:flex;align-items:center;justify-content:center;color:#ccc;"><i class="fas fa-ban"></i></div>`;
+
+                list.innerHTML += `
+                    <div class="stock-item">
+                        ${imgHTML}
+                        <span class="stock-item-name">${d.name || "Unknown"}</span>
+                        <span class="stock-tag">UNAVAILABLE</span>
+                    </div>`;
+            }
+        });
+
+        document.getElementById('val-stock').innerText = outOfStockCount;
+        if (outOfStockCount === 0) {
+            list.innerHTML = "<div class='empty-state' style='color:#1A6922; padding: 20px;'>All items available!</div>";
+        }
+    });
+
+    // --- LISTENER B: ORDERS DATA ---
+    db.collection('orders').onSnapshot(snapshot => {
+        // Sound Logic: Trigger if count increases after first load
+        const currentOrderCount = snapshot.docs.length;
+        if (!isInitialOrderLoad && currentOrderCount > lastOrderCount) {
+            playNotificationSound();
+        }
+        lastOrderCount = currentOrderCount;
+        isInitialOrderLoad = false;
+        let totalToday = 0, pendingToday = 0, completedToday = 0, revenueToday = 0;
+        
+        // 1. Corrected Time Range: 8 AM to 5 PM (10 hours total)
+        let hourlyOrders = new Array(10).fill(0); 
+        let hoursLabels = ["8:00", "9:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00"];
+        
+        let itemSales = {};
+        let categorySales = {};
+
+        const recentContainer = document.getElementById('recentOrdersList');
+        recentContainer.innerHTML = "";
+
+        const allOrders = [];
+        snapshot.forEach(doc => { allOrders.push({ id: doc.id, ...doc.data() }); });
+
+        // Sort by time
+        allOrders.sort((a, b) => (b.orderTime?.toDate?.() || 0) - (a.orderTime?.toDate?.() || 0));
+
+        allOrders.forEach(order => {
+            const timeField = order.orderTime || order.createdAt || order.timestamp;
+            if (timeField) {
+                const orderDate = timeField.toDate ? timeField.toDate() : new Date(timeField);
+
+                if (orderDate >= todayStart) {
+                    totalToday++;
+                    if (['Pending Payment', 'Pending', 'Preparing'].includes(order.status)) pendingToday++;
+                    if (order.status === 'Completed') completedToday++;
+                    
+                    // --- NEW LOGIC: Map the order to the correct hour for the chart ---
+                    const orderHour = orderDate.getHours();
+                    // We only care about hours between 8 AM (8) and 5 PM (17) based on your labels
+                    if (orderHour >= 8 && orderHour <= 17) {
+                        const hourIndex = orderHour - 8;
+                        hourlyOrders[hourIndex]++; 
+                    }
+                    // ------------------------------------------------------------------
+
+                    if (order.status !== 'Cancelled') {
+                        const amt = parseFloat(order.totalAmount || 0);
+                        revenueToday += amt;
+
+                        if (order.items && Array.isArray(order.items)) {
+                            order.items.forEach(item => {
+                                const rawName = (item.title || item.name || 'Unknown').trim();
+                                const qty = parseInt(item.quantity || 1);
+                                
+                                const lookup = menuInfoMap[rawName.toLowerCase()] || { category: 'General', price: 0 };
+                                const price = parseFloat(item.price) || lookup.price;
+
+                                if (!itemSales[rawName]) itemSales[rawName] = { qty: 0, rev: 0 };
+                                itemSales[rawName].qty += qty;
+                                itemSales[rawName].rev += (price * qty);
+
+                                if (!categorySales[lookup.category]) categorySales[lookup.category] = 0;
+                                categorySales[lookup.category] += qty;
+                            });
+                        }
+                    }
+
+                    // Recent Activity UI
+                    if (recentContainer.children.length < 8) {
+                        const div = document.createElement('div');
+                        div.className = 'recent-item';
+                        div.innerHTML = `
+                            <div class="recent-icon"><i class="fas fa-shopping-basket"></i></div>
+                            <div class="recent-content">
+                                <div class="recent-top">
+                                    <span class="r-user">${order.userName || 'Guest'}</span>
+                                    <span class="r-price">₹${order.totalAmount || 0}</span>
+                                </div>
+                                <div class="r-status">${order.status}</div>
+                            </div>`;
+                        recentContainer.appendChild(div);
+                    }
+                }
+            }
+        });
+
+        // Update Stats UI
+        document.getElementById('totalOrders').innerText = totalToday;
+        document.getElementById('pendingOrders').innerText = pendingToday;
+        document.getElementById('todayRevenue').innerText = "₹" + Math.round(revenueToday);
+        document.getElementById('completedOrders').innerText = completedToday;
+
+        if (totalToday === 0) recentContainer.innerHTML = `<div class="empty-state">No orders today.</div>`;
+        
+        updateTopSelling(itemSales);
+
+        // 3. Cleaned up Chart Initialization logic
+        const catLabels = Object.keys(categorySales);
+        const catData = Object.values(categorySales);
+
+        if (catData.length === 0) {
+            // Show "No Sales" state
+            initCharts(hourlyOrders, hoursLabels, [0], ['No Sales Today']);
+        } else {
+            // Show actual data
+            initCharts(hourlyOrders, hoursLabels, catData, catLabels);
+        }
+
+        document.getElementById('loadingOverlay').style.display = 'none';
+    });
+}
+
+        function updateTopSelling(salesMap) {
+            const tbody = document.getElementById('topSellingBody');
+            tbody.innerHTML = "";
+            const sorted = Object.entries(salesMap).sort((a, b) => b[1].qty - a[1].qty).slice(0, 3);
+            
+            if (sorted.length === 0) { tbody.innerHTML = "<tr><td colspan='3' class='empty-state'>No sales yet.</td></tr>"; return; }
+
+            sorted.forEach(item => {
+                const name = item[0];
+                const imgUrl = menuImages[name.toLowerCase()]; 
+                let imgHTML = `<div class="fallback-icon"><i class="fas fa-utensils"></i></div>`;
+                
+                if(imgUrl) {
+                    imgHTML = `<img src="${imgUrl}" class="food-img" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+                               <div class="fallback-icon" style="display:none"><i class="fas fa-utensils"></i></div>`;
+                }
+
+                const tr = document.createElement('tr');
+                tr.className = 'table-row-card';
+                tr.innerHTML = `
+                    <td><div class="food-flex">${imgHTML}<span>${name}</span></div></td>
+                    <td>${item[1].qty}</td>
+                    <td style="color:#1A6922; font-weight:700;">₹${item[1].rev}</td>
+                `;  
+                tbody.appendChild(tr);
+            });
+        }
+            function toggleMenu() { document.getElementById("menuSidebar").classList.toggle("open"); }
+
+// --- LISTENER FOR NOTIFICATIONS (REPLACING THE OLD FUNCTION) ---
+db.collection('notifications').onSnapshot(snap => {
+    const currentNotifCount = snap.docs.length;
+    
+    if (!isInitialNotifLoad && currentNotifCount > lastNotifCount) {
+        playNotificationSound(); // This calls the function at the top
+    }
+    
+    lastNotifCount = currentNotifCount;
+    isInitialNotifLoad = false;
+});
+
+    </script>
+</body>
+</html>
