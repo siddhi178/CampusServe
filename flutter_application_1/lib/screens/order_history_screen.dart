@@ -308,7 +308,7 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
                                         fontSize: 12,
                                         color: Colors.black87,
                                         fontWeight: FontWeight
-                                            .w600)), // Smaller item name
+                                            .w500)), // Smaller item name
                               ),
                               Text("₹$cleanPrice",
                                   style: const TextStyle(

@@ -32,6 +32,9 @@ class OrderPlacedScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // The specific elegant light green color
+    final Color primaryLightGreen = const Color.fromRGBO(165, 214, 167, 1);
+
     return PopScope(
       canPop: false,
       onPopInvoked: (didPop) {
@@ -39,7 +42,7 @@ class OrderPlacedScreen extends StatelessWidget {
         _goToHome(context);
       },
       child: Scaffold(
-        backgroundColor: Colors.white,
+        backgroundColor: const Color(0xFFFDFDFD), // Clean white background
         body: SafeArea(
           child: SingleChildScrollView(
             child: Padding(
@@ -47,7 +50,7 @@ class OrderPlacedScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const SizedBox(height: 40),
+                  const SizedBox(height: 10),
 
                   // Success Icon
                   Center(
@@ -55,14 +58,15 @@ class OrderPlacedScreen extends StatelessWidget {
                       width: 100,
                       height: 100,
                       decoration: BoxDecoration(
-                        color: Colors.green.shade50,
+                        color: primaryLightGreen.withOpacity(0.2), // Soft pastel green
                         shape: BoxShape.circle,
+                        border: Border.all(color: primaryLightGreen.withOpacity(0.5), width: 2),
                       ),
-                      child: const Center(
+                      child: Center(
                         child: Icon(
                           Icons.check_circle,
-                          color: Color(0xFF1B5E20),
-                          size: 80,
+                          color: Colors.green.shade600, // Elegant green icon
+                          size: 60,
                         ),
                       ),
                     ),
@@ -75,60 +79,74 @@ class OrderPlacedScreen extends StatelessWidget {
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 22,
-                      fontWeight: FontWeight.bold,
+                      fontWeight: FontWeight.w600, // Removed heavy bold
                       color: Colors.black87,
                     ),
                   ),
                   const SizedBox(height: 8),
-                  const Text(
+                  Text(
                     'Your food is being prepared.',
                     textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 16, color: Colors.grey),
+                    style: TextStyle(fontSize: 14, color: Colors.grey.shade500),
                   ),
 
-                  const SizedBox(height: 32),
+                  const SizedBox(height: 35),
 
                   // TOKEN NUMBER BOX
                   Container(
-                    padding: const EdgeInsets.all(20),
+                    padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 20),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFE8F5E9),
+                      color: primaryLightGreen.withOpacity(0.15), // Very light background
                       borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: Colors.green.shade200),
+                      border: Border.all(color: primaryLightGreen.withOpacity(0.6), width: 1.5),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.02),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4)
+                        )
+                      ]
                     ),
                     child: Column(
                       children: [
-                        const Text(
+                        Text(
                           'TOKEN NUMBER',
                           style: TextStyle(
                             fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF1B5E20),
+                            fontWeight: FontWeight.w600,
+                            color: Colors.green.shade800,
                             letterSpacing: 1.5,
                           ),
                         ),
                         const SizedBox(height: 8),
                         Text(
                           tokenNumber,
-                          style: const TextStyle(
-                            fontSize: 36,
-                            fontWeight: FontWeight.w900,
-                            color: Color(0xFF1B5E20),
+                          style: TextStyle(
+                            fontSize: 38,
+                            fontWeight: FontWeight.w600, // Removed heavy w900
+                            color: Colors.green.shade900,
                           ),
                         ),
                       ],
                     ),
                   ),
 
-                  const SizedBox(height: 32),
+                  const SizedBox(height: 24),
 
                   // ORDER DETAILS BOX
                   Container(
-                    padding: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
-                      color: Colors.grey[50],
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.grey[200]!),
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: Colors.green.shade100, width: 1.5),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.02),
+                          blurRadius: 8,
+                          offset: const Offset(0, 3)
+                        )
+                      ]
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -137,11 +155,14 @@ class OrderPlacedScreen extends StatelessWidget {
                           'Order Summary',
                           style: TextStyle(
                             fontSize: 16,
-                            fontWeight: FontWeight.w600,
+                            fontWeight: FontWeight.w600, // Semi-bold
                             color: Colors.black87,
                           ),
                         ),
-                        const Divider(height: 24),
+                        const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 12.0),
+                          child: Divider(height: 1, color: Colors.black12),
+                        ),
 
                         // Formats string correctly if order ID starts with ORDER_
                         _buildDetailRow(
@@ -153,12 +174,15 @@ class OrderPlacedScreen extends StatelessWidget {
                         _buildDetailRow('Total Items', '$itemCount'),
                         const SizedBox(height: 12),
                         _buildDetailRow('Payment Mode', paymentType),
-                        const SizedBox(height: 12),
+                        const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 12.0),
+                          child: Divider(height: 1, color: Colors.black12),
+                        ),
                         _buildDetailRow(
                           'Amount Paid',
-                          '₹${totalPaid.toStringAsFixed(0)}', // Clean formatting
+                          '₹${totalPaid.toStringAsFixed(0)}', 
                           isBold: true,
-                          color: Colors.green,
+                          color: Colors.green.shade700,
                         ),
                       ],
                     ),
@@ -174,7 +198,7 @@ class OrderPlacedScreen extends StatelessWidget {
                         'You will receive a notification when your order is Ready.',
                   ),
 
-                  const SizedBox(height: 30),
+                  const SizedBox(height: 35),
 
                   // ACTION BUTTONS
                   Row(
@@ -197,17 +221,18 @@ class OrderPlacedScreen extends StatelessWidget {
                           },
                           style: OutlinedButton.styleFrom(
                             padding: const EdgeInsets.symmetric(vertical: 16),
-                            side: const BorderSide(color: Color(0xFF1B5E20)),
+                            side: BorderSide(color: Colors.green.shade600, width: 1.2),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
                           ),
-                          child: const Text(
+                          child: Text(
                             'Track Order',
                             style: TextStyle(
-                              fontSize: 16,
+                              fontSize: 15,
                               fontWeight: FontWeight.w600,
-                              color: Color(0xFF1B5E20),
+                              color: Colors.green.shade700,
+                              letterSpacing: 0.5
                             ),
                           ),
                         ),
@@ -217,8 +242,8 @@ class OrderPlacedScreen extends StatelessWidget {
                         child: ElevatedButton(
                           onPressed: () => _goToHome(context),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF1B5E20),
-                            foregroundColor: Colors.white,
+                            backgroundColor: primaryLightGreen, // Pastel green
+                            foregroundColor: Colors.black87, // Dark text for contrast
                             padding: const EdgeInsets.symmetric(vertical: 16),
                             elevation: 0,
                             shape: RoundedRectangleBorder(
@@ -228,8 +253,9 @@ class OrderPlacedScreen extends StatelessWidget {
                           child: const Text(
                             'Go Home',
                             style: TextStyle(
-                              fontSize: 16,
+                              fontSize: 15,
                               fontWeight: FontWeight.w600,
+                              letterSpacing: 0.5
                             ),
                           ),
                         ),
@@ -254,7 +280,11 @@ class OrderPlacedScreen extends StatelessWidget {
       children: [
         Text(
           label,
-          style: const TextStyle(fontSize: 14, color: Colors.black54),
+          style: TextStyle(
+            fontSize: 14, 
+            color: Colors.grey.shade600,
+            fontWeight: FontWeight.w400
+          ),
         ),
         Expanded(
           child: Text(
@@ -262,7 +292,7 @@ class OrderPlacedScreen extends StatelessWidget {
             textAlign: TextAlign.end,
             style: TextStyle(
               fontSize: 14,
-              fontWeight: isBold ? FontWeight.bold : FontWeight.w600,
+              fontWeight: isBold ? FontWeight.w600 : FontWeight.w500, // Lighter weights
               color: color ?? Colors.black87,
             ),
           ),
@@ -279,7 +309,14 @@ class OrderPlacedScreen extends StatelessWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(icon, color: Colors.orange, size: 20),
+        Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: Colors.orange.shade50,
+            shape: BoxShape.circle,
+          ),
+          child: Icon(icon, color: Colors.orange.shade700, size: 20),
+        ),
         const SizedBox(width: 12),
         Expanded(
           child: Column(
@@ -287,13 +324,16 @@ class OrderPlacedScreen extends StatelessWidget {
             children: [
               Text(
                 title,
-                style:
-                    const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                style: const TextStyle(
+                  fontSize: 14, 
+                  fontWeight: FontWeight.w600, // Semi-bold
+                  color: Colors.black87
+                ),
               ),
               const SizedBox(height: 4),
               Text(
                 description,
-                style: const TextStyle(fontSize: 12, color: Colors.grey),
+                style: TextStyle(fontSize: 12, color: Colors.grey.shade500, height: 1.3),
               ),
             ],
           ),

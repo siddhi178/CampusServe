@@ -27,6 +27,9 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen> {
   bool _isProcessing = false;
   final CartManager _cartManager = CartManager();
 
+  // The specific elegant light green color requested
+  final Color primaryLightGreen = const Color.fromRGBO(165, 214, 167, 1);
+
   @override
   void initState() {
     super.initState();
@@ -89,7 +92,7 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen> {
         'contact': FirebaseAuth.instance.currentUser?.phoneNumber ?? '',
         'email': FirebaseAuth.instance.currentUser?.email ?? ''
       },
-      'theme': {'color': '#1B5E20'}
+      'theme': {'color': '#A5D6A7'} // Updated to match your theme
     };
 
     try {
@@ -130,18 +133,21 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen> {
         builder: (ctx) => AlertDialog(
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16)),
+              backgroundColor: Colors.white,
               title: const Text("Confirm Payment",
-                  style: TextStyle(fontWeight: FontWeight.bold)),
+                  style: TextStyle(fontWeight: FontWeight.w600, color: Colors.black87)),
               content: Text(
-                  "Pay ₹${widget.amountToPay.toStringAsFixed(0)} from your Campus Wallet?"),
+                  "Pay ₹${widget.amountToPay.toStringAsFixed(0)} from your Campus Wallet?",
+                  style: TextStyle(color: Colors.grey.shade700)),
               actions: [
                 TextButton(
                     onPressed: () => Navigator.pop(ctx),
                     child: const Text("Cancel",
-                        style: TextStyle(color: Colors.grey))),
+                        style: TextStyle(color: Colors.grey, fontWeight: FontWeight.w500))),
                 ElevatedButton(
                     style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green.shade700,
+                        backgroundColor: primaryLightGreen,
+                        elevation: 0,
                         shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(8))),
                     onPressed: () {
@@ -149,7 +155,7 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen> {
                       _deductMoneyAndOrder(currentBal);
                     },
                     child: const Text("Pay Now",
-                        style: TextStyle(color: Colors.white)))
+                        style: TextStyle(color: Colors.black87, fontWeight: FontWeight.w600)))
               ],
             ));
   }
@@ -258,7 +264,6 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen> {
         'status': 'Preparing',
         'totalPrepTime': totalTime,
         'timestamp': FieldValue.serverTimestamp(),
-        // IMPORTANT: Since Wallet/Online is instantly paid, we start the kitchen timer NOW.
         'prepStartTime': FieldValue.serverTimestamp(),
         'txnId': txnId ?? "WALLET_TXN"
       });
@@ -297,17 +302,20 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen> {
     User? user = FirebaseAuth.instance.currentUser;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF9FDF9), // Very light premium green bg
+      backgroundColor: const Color(0xFFFDFDFD), // Clean white background
       appBar: AppBar(
           title: const Text("Select Payment",
               style: TextStyle(
-                  color: Colors.black87, fontWeight: FontWeight.w800)),
+                  color: Colors.black87, 
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600)), 
           backgroundColor: Colors.white,
           elevation: 0,
           centerTitle: true,
+          surfaceTintColor: Colors.transparent,
           iconTheme: const IconThemeData(color: Colors.black87)),
       body: _isProcessing
-          ? const Center(child: CircularProgressIndicator(color: Colors.green))
+          ? Center(child: CircularProgressIndicator(color: primaryLightGreen))
           : StreamBuilder<DocumentSnapshot>(
               stream: FirebaseFirestore.instance
                   .collection('settings')
@@ -345,51 +353,42 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen> {
 
                     return SingleChildScrollView(
                       child: Padding(
-                        padding: const EdgeInsets.all(20),
+                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            // --- REDESIGNED TOTAL TO PAY BANNER ---
+                            // --- ELEGANT TOTAL TO PAY BANNER ---
                             Container(
                               padding: const EdgeInsets.symmetric(
-                                  vertical: 25, horizontal: 20),
+                                  vertical: 24, horizontal: 20),
                               width: double.infinity,
                               decoration: BoxDecoration(
-                                color: const Color(0xFFE8F5E9), // Pastel Green
-                                borderRadius: BorderRadius.circular(20),
+                                color: primaryLightGreen.withOpacity(0.2), // Very soft background
+                                borderRadius: BorderRadius.circular(16),
                                 border: Border.all(
-                                    color: Colors.green.shade200, width: 1.5),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.green.withOpacity(0.1),
-                                    blurRadius: 15,
-                                    offset: const Offset(0, 8),
-                                  )
-                                ],
+                                    color: primaryLightGreen.withOpacity(0.5), width: 1), 
                               ),
                               child: Column(children: [
-                                Text("Total Amount",
+                                Text("Amount to Pay",
                                     style: TextStyle(
-                                        color:
-                                            Colors.green.shade800, // Dark text
+                                        color: Colors.green.shade800,
                                         fontSize: 14,
-                                        fontWeight: FontWeight.w600)),
-                                const SizedBox(height: 5),
+                                        fontWeight: FontWeight.w500)),
+                                const SizedBox(height: 6),
                                 Text(
                                     "₹${widget.amountToPay.toStringAsFixed(0)}",
-                                    style: TextStyle(
-                                        fontSize: 38,
-                                        fontWeight: FontWeight.w900,
-                                        color:
-                                            Colors.green.shade900)) // Dark text
+                                    style: const TextStyle(
+                                        fontSize: 36,
+                                        fontWeight: FontWeight.w600, // Medium-bold, not heavy
+                                        color: Colors.black87))
                               ]),
                             ),
 
                             const SizedBox(height: 35),
                             const Text("Payment Methods",
                                 style: TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600, 
                                     color: Colors.black87)),
                             const SizedBox(height: 15),
 
@@ -397,31 +396,28 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen> {
                             _buildTile(
                               "Campus Wallet",
                               "Balance: ₹${walletBal.toStringAsFixed(0)}",
-                              Icons.account_balance_wallet,
-                              Colors.white,
+                              Icons.account_balance_wallet_outlined,
                               () => _handleWalletTap(walletBal),
                               isWallet: true,
                               isEnabled: true,
                             ),
-                            const SizedBox(height: 15),
+                            const SizedBox(height: 12),
 
                             // --- ONLINE / UPI (Admin Controlled) ---
                             _buildTile(
                               "Google Pay / UPI",
                               "Pay via GPay, PhonePe, Paytm",
-                              Icons.security_update_good,
-                              Colors.white,
+                              Icons.qr_code_scanner,
                               () => _initiateRazorpay(),
                               isEnabled: isUpiEnabled,
                             ),
-                            const SizedBox(height: 15),
+                            const SizedBox(height: 12),
 
                             // --- PAY ON COUNTER (Admin Controlled) ---
                             _buildTile(
                               "Pay on Counter",
                               "Cash Payment",
-                              Icons.storefront,
-                              Colors.white,
+                              Icons.storefront_outlined,
                               () {
                                 Navigator.push(
                                     context,
@@ -449,15 +445,12 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen> {
     String title,
     String sub,
     IconData icon,
-    Color color,
     VoidCallback tap, {
     bool isWallet = false,
     bool isEnabled = true,
   }) {
-    // If disabled by admin, change subtitle and fade it out
     if (!isEnabled) {
       sub = "Currently disabled by Admin";
-      color = Colors.grey.shade100;
     }
 
     return AnimatedOpacity(
@@ -465,15 +458,15 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen> {
       opacity: isEnabled ? 1.0 : 0.5,
       child: Container(
         decoration: BoxDecoration(
-          color: color,
+          color: Colors.white,
           border: Border.all(
-              color: isEnabled ? Colors.grey.shade300 : Colors.transparent,
-              width: 1),
+              color: isEnabled ? primaryLightGreen.withOpacity(0.6) : Colors.grey.shade200, // Light beautiful border
+              width: 1.2),
           borderRadius: BorderRadius.circular(16),
           boxShadow: isEnabled
               ? [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.03),
+                    color: primaryLightGreen.withOpacity(0.15), // Soft elegant green shadow
                     blurRadius: 10,
                     offset: const Offset(0, 4),
                   )
@@ -483,45 +476,45 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen> {
         child: ListTile(
           onTap: isEnabled ? tap : null,
           contentPadding:
-              const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+              const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           leading: Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: isEnabled ? Colors.green.shade50 : Colors.grey.shade200,
+              color: isEnabled ? primaryLightGreen.withOpacity(0.2) : Colors.grey.shade100,
               shape: BoxShape.circle,
             ),
             child: Icon(icon,
                 color: isEnabled ? Colors.green.shade800 : Colors.grey,
-                size: 24),
+                size: 22),
           ),
           title: Text(title,
               style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
-                  color: isEnabled ? Colors.black87 : Colors.grey.shade700)),
+                  fontWeight: FontWeight.w600, // Medium bold
+                  fontSize: 15,
+                  color: isEnabled ? Colors.black87 : Colors.grey.shade600)),
           subtitle: Padding(
             padding: const EdgeInsets.only(top: 4.0),
             child: Text(sub,
                 style: TextStyle(
-                    fontSize: 13,
-                    color: isEnabled ? Colors.black54 : Colors.red.shade400,
-                    fontWeight:
-                        isEnabled ? FontWeight.normal : FontWeight.w600)),
+                    fontSize: 12,
+                    color: isEnabled ? Colors.grey.shade600 : Colors.red.shade400,
+                    fontWeight: FontWeight.normal)),
           ),
           trailing: isWallet
               ? Container(
                   padding:
                       const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
-                      color: Colors.green.shade100,
-                      borderRadius: BorderRadius.circular(20)),
-                  child: const Text("FAST",
+                      color: primaryLightGreen.withOpacity(0.3),
+                      borderRadius: BorderRadius.circular(12)),
+                  child: Text("FAST",
                       style: TextStyle(
-                          color: Colors.green,
+                          color: Colors.green.shade800,
                           fontSize: 10,
-                          fontWeight: FontWeight.w900)))
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: 0.5))) // Elegant badge
               : Icon(Icons.chevron_right,
                   size: 22,
                   color: isEnabled ? Colors.grey.shade400 : Colors.transparent),

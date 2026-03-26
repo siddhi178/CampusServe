@@ -22,6 +22,9 @@ class _WalletScreenState extends State<WalletScreen> {
   String _selectedFilter = 'All Time';
   DateTime? _customSelectedDate;
 
+  // The specific elegant light green color requested
+  final Color primaryLightGreen = const Color.fromRGBO(165, 214, 167, 1);
+
   final List<String> _filterOptions = [
     'All Time',
     'Today',
@@ -45,8 +48,6 @@ class _WalletScreenState extends State<WalletScreen> {
     super.dispose();
   }
 
-  // ... Razorpay logic remains same ...
-
   void _startAddMoney() {
     FocusScope.of(context).unfocus();
     double amount = double.tryParse(_amountController.text.trim()) ?? 0.0;
@@ -65,7 +66,7 @@ class _WalletScreenState extends State<WalletScreen> {
         'contact': '',
         'email': FirebaseAuth.instance.currentUser?.email ?? ''
       },
-      'theme': {'color': '#1B5E20'}
+      'theme': {'color': '#A5D6A7'} // Matching your theme color
     };
     _razorpay.open(options);
   }
@@ -94,7 +95,6 @@ class _WalletScreenState extends State<WalletScreen> {
 
         if (snap.exists) {
           var data = snap.data() as Map<String, dynamic>;
-          // SAFE CHECK: Use containsKey to avoid Bad State error
           currentBal = data.containsKey('wallet_balance')
               ? (data['wallet_balance'] as num).toDouble()
               : 0.0;
@@ -135,11 +135,12 @@ class _WalletScreenState extends State<WalletScreen> {
           initialDate: DateTime.now(),
           firstDate: DateTime(2023),
           lastDate: DateTime.now());
-      if (picked != null)
+      if (picked != null) {
         setState(() {
           _customSelectedDate = picked;
           _selectedFilter = newValue!;
         });
+      }
     } else if (newValue != null) {
       setState(() => _selectedFilter = newValue);
     }
@@ -149,13 +150,16 @@ class _WalletScreenState extends State<WalletScreen> {
   Widget build(BuildContext context) {
     User? user = FirebaseAuth.instance.currentUser;
     return Scaffold(
-      backgroundColor: const Color(0xFFF9FDF9),
+      backgroundColor: const Color(0xFFFDFDFD), // Clean white background
       appBar: AppBar(
           title: const Text("My Wallet",
               style: TextStyle(
-                  color: Colors.black87, fontWeight: FontWeight.w800)),
+                  color: Colors.black87, 
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600)), // Reduced bold
           backgroundColor: Colors.white,
           elevation: 0,
+          surfaceTintColor: Colors.transparent,
           centerTitle: true,
           iconTheme: const IconThemeData(color: Colors.black87)),
       body: StreamBuilder<DocumentSnapshot>(
@@ -167,27 +171,32 @@ class _WalletScreenState extends State<WalletScreen> {
           double balance = 0.0;
           if (snapshot.hasData && snapshot.data!.exists) {
             var d = snapshot.data!.data() as Map<String, dynamic>?;
-            // SAFE CHECK: Ensuring wallet_balance is read safely
             if (d != null && d.containsKey('wallet_balance')) {
               balance = (d['wallet_balance'] as num).toDouble();
             }
           }
 
           return SingleChildScrollView(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Balance Card
+                // --- PREMIUM LIGHT BALANCE CARD ---
                 Container(
                   padding:
                       const EdgeInsets.symmetric(vertical: 30, horizontal: 25),
                   width: double.infinity,
                   decoration: BoxDecoration(
-                    color: const Color(0xFFE8F5E9),
-                    borderRadius: BorderRadius.circular(24),
-                    border:
-                        Border.all(color: Colors.green.shade200, width: 1.5),
+                    color: primaryLightGreen.withOpacity(0.2), // Soft pastel background
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: primaryLightGreen.withOpacity(0.6), width: 1.5),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.02),
+                        blurRadius: 15,
+                        offset: const Offset(0, 8),
+                      )
+                    ]
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -195,35 +204,40 @@ class _WalletScreenState extends State<WalletScreen> {
                       Text("Available Balance",
                           style: TextStyle(
                               color: Colors.green.shade800,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600)),
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500)),
                       const SizedBox(height: 8),
                       Text("₹ ${balance.toStringAsFixed(2)}",
-                          style: TextStyle(
-                              color: Colors.green.shade900,
-                              fontSize: 42,
-                              fontWeight: FontWeight.w900)),
+                          style: const TextStyle(
+                              color: Colors.black87, // Dark elegant text
+                              fontSize: 40,
+                              fontWeight: FontWeight.w500)), // NOT BOLD
                     ],
                   ),
                 ),
+                
                 const SizedBox(height: 35),
-                // Add Money Input
+                
+                // --- ADD MONEY SECTION ---
                 const Text("Add Money",
                     style:
-                        TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-                const SizedBox(height: 15),
+                        TextStyle(fontWeight: FontWeight.w600, fontSize: 16, color: Colors.black87)),
+                const SizedBox(height: 12),
                 _buildAddMoneyField(),
+                
                 const SizedBox(height: 35),
-                // Transactions Header with Filter
+                
+                // --- TRANSACTIONS HEADER ---
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     const Text("Transactions",
                         style: TextStyle(
-                            fontWeight: FontWeight.bold, fontSize: 18)),
+                            fontWeight: FontWeight.w600, fontSize: 16, color: Colors.black87)),
                     _buildFilterDropdown(),
                   ],
                 ),
+                
                 const SizedBox(height: 15),
                 _buildTransactionList(user?.uid),
               ],
@@ -236,30 +250,38 @@ class _WalletScreenState extends State<WalletScreen> {
 
   Widget _buildAddMoneyField() {
     return Container(
-      padding: const EdgeInsets.all(8),
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
       decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: Colors.grey.shade200)),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.grey.shade200, width: 1.5)),
       child: Row(
         children: [
           Expanded(
               child: TextField(
                   controller: _amountController,
                   keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(
-                      prefixText: "₹ ",
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                  decoration: InputDecoration(
+                      prefixIcon: const Icon(Icons.currency_rupee, color: Colors.grey, size: 20),
                       border: InputBorder.none,
-                      contentPadding: EdgeInsets.symmetric(horizontal: 15),
-                      hintText: "0.00"))),
-          ElevatedButton(
-              onPressed: _isLoading ? null : _startAddMoney,
-              style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green.shade700,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14))),
-              child: const Text("Add")),
+                      hintText: "0.00",
+                      hintStyle: TextStyle(color: Colors.grey.shade400)))),
+          SizedBox(
+            height: 48,
+            width: 80, // Giving the button a nice proportion
+            child: ElevatedButton(
+                onPressed: _isLoading ? null : _startAddMoney,
+                style: ElevatedButton.styleFrom(
+                    backgroundColor: primaryLightGreen, // Beautiful pastel green
+                    foregroundColor: Colors.black87, // Dark text for contrast
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                    elevation: 0),
+                child: _isLoading 
+                    ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.black87, strokeWidth: 2))
+                    : const Text("Add", style: TextStyle(fontWeight: FontWeight.w600, letterSpacing: 0.5))),
+          ),
         ],
       ),
     );
@@ -267,14 +289,17 @@ class _WalletScreenState extends State<WalletScreen> {
 
   Widget _buildFilterDropdown() {
     return Container(
+      height: 35,
       padding: const EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.grey.shade300)),
+          color: Colors.grey.shade50,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: Colors.grey.shade200)),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
           value: _selectedFilter,
+          icon: Icon(Icons.keyboard_arrow_down, color: Colors.grey.shade600, size: 20),
+          style: TextStyle(color: Colors.grey.shade700, fontSize: 13, fontWeight: FontWeight.w500),
           items: _filterOptions
               .map((e) => DropdownMenuItem(
                   value: e,
@@ -288,6 +313,7 @@ class _WalletScreenState extends State<WalletScreen> {
     );
   }
 
+  // --- ELEGANT TRANSACTION LIST ---
   Widget _buildTransactionList(String? uid) {
     return StreamBuilder<QuerySnapshot>(
       stream: FirebaseFirestore.instance
@@ -296,11 +322,18 @@ class _WalletScreenState extends State<WalletScreen> {
           .orderBy('timestamp', descending: true)
           .snapshots(),
       builder: (context, snap) {
-        if (!snap.hasData)
-          return const Center(child: CircularProgressIndicator());
+        if (!snap.hasData) {
+          return Center(child: CircularProgressIndicator(color: primaryLightGreen));
+        }
         var docs = snap.data!.docs;
-        if (docs.isEmpty)
-          return const Center(child: Text("No transactions yet"));
+        if (docs.isEmpty) {
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.only(top: 40.0),
+              child: Text("No transactions yet", style: TextStyle(color: Colors.grey.shade500, fontSize: 15)),
+            ),
+          );
+        }
         return ListView.builder(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
@@ -308,19 +341,83 @@ class _WalletScreenState extends State<WalletScreen> {
           itemBuilder: (context, i) {
             var d = docs[i].data() as Map<String, dynamic>;
             bool isCredit = d['type'] == 'Credit';
-            return ListTile(
-              leading: Icon(
-                  isCredit ? Icons.arrow_downward : Icons.arrow_upward,
-                  color: isCredit ? Colors.green : Colors.red),
-              title: Text(d['description'] ?? 'Transaction'),
-              subtitle: Text(d['timestamp'] != null
-                  ? DateFormat('dd MMM, hh:mm a')
-                      .format((d['timestamp'] as Timestamp).toDate())
-                  : ''),
-              trailing: Text("${isCredit ? '+' : '-'} ₹${d['amount']}",
-                  style: TextStyle(
-                      color: isCredit ? Colors.green : Colors.red,
-                      fontWeight: FontWeight.bold)),
+            
+            // Format Timestamp
+            String formattedDate = '';
+            if (d['timestamp'] != null) {
+               formattedDate = DateFormat('dd MMM, hh:mm a').format((d['timestamp'] as Timestamp).toDate());
+            }
+
+            return Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.grey.shade100, width: 1.5),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.02),
+                    blurRadius: 8,
+                    offset: const Offset(0, 3)
+                  )
+                ]
+              ),
+              child: Row(
+                children: [
+                  // Icon Circle
+                  Container(
+                    height: 46,
+                    width: 46,
+                    decoration: BoxDecoration(
+                      color: isCredit ? primaryLightGreen.withOpacity(0.2) : Colors.red.shade50,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      isCredit ? Icons.arrow_downward_rounded : Icons.arrow_upward_rounded,
+                      color: isCredit ? Colors.green.shade700 : Colors.red.shade500,
+                      size: 22,
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  
+                  // Text Data
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          d['description'] ?? 'Transaction',
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500, // Reduced bold
+                            color: Colors.black87
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          formattedDate,
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: Colors.grey.shade500,
+                            fontWeight: FontWeight.normal
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  
+                  // Amount
+                  Text(
+                    "${isCredit ? '+' : '-'} ₹${d['amount']}",
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600, // Semi-bold for clarity
+                      color: isCredit ? Colors.green.shade700 : Colors.red.shade600,
+                    ),
+                  ),
+                ],
+              ),
             );
           },
         );

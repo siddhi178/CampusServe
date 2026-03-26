@@ -6,7 +6,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'dart:math';
 import 'make_payment_screen.dart';
 import 'cart_manager.dart';
-import 'package:intl/intl.dart'; // Add this for date formatting
+import 'package:intl/intl.dart';
 
 class PayOnCounterScreen extends StatefulWidget {
   final double amount;
@@ -25,10 +25,17 @@ class PayOnCounterScreen extends StatefulWidget {
 class _PayOnCounterScreenState extends State<PayOnCounterScreen> {
   String? tokenNumber;
   String? orderId;
+  int _prepTime = 5; // Added to store calculated time locally
+  
   bool isTokenGenerated = false;
   bool _isGenerating = false;
+  bool _isProceeding = false; // Added to show loading on Proceed button
 
-  // --- 1. FIXED TIME CALCULATION (Fetch from DB) ---
+  // Elegant pastel theme colors
+  final Color primaryLightGreen = const Color.fromRGBO(165, 214, 167, 1);
+  final Color darkGreenText = const Color(0xFF1B5E20);
+
+  // --- 1. CALCULATE TIME LOCALLY ---
   Future<int> _calculateRealPrepTime(List<Map<String, dynamic>> items) async {
     int totalMinutes = 0;
 
@@ -45,13 +52,10 @@ class _PayOnCounterScreenState extends State<PayOnCounterScreen> {
 
         if (query.docs.isNotEmpty) {
           var data = query.docs.first.data();
-          // Get time_max (e.g., "2"), default to 5
           var maxTimeStr = data['time_max'] ?? '5';
           int itemTime = int.tryParse(maxTimeStr.toString()) ?? 5;
 
-          // IMPORTANT: Update item list with specific time for display later
           items[i]['prep_time'] = itemTime;
-
           totalMinutes += (itemTime * qty);
         } else {
           totalMinutes += (5 * qty);
@@ -61,30 +65,7 @@ class _PayOnCounterScreenState extends State<PayOnCounterScreen> {
       }
     }
 
-    // REMOVED the < 15 check. Returns actual time (e.g. 2).
     return totalMinutes == 0 ? 2 : totalMinutes;
-  }
-
-  Future<void> _updateItemPopularity() async {
-    try {
-      final batch = FirebaseFirestore.instance.batch();
-      for (var item in widget.orderItems) {
-        String itemName = item['title'] ?? item['name'];
-        int quantity = item['quantity'] ?? 1;
-        var query = await FirebaseFirestore.instance
-            .collection('menu')
-            .where('name', isEqualTo: itemName)
-            .limit(1)
-            .get();
-        if (query.docs.isNotEmpty) {
-          var docRef = query.docs.first.reference;
-          batch.update(docRef, {'order_count': FieldValue.increment(quantity)});
-        }
-      }
-      await batch.commit();
-    } catch (e) {
-      debugPrint("Error updating popularity: $e");
-    }
   }
 
   Future<String> getNextTokenNumber() async {
@@ -105,56 +86,24 @@ class _PayOnCounterScreenState extends State<PayOnCounterScreen> {
           {
             'lastTokenNumber': nextNumber,
           },
-          SetOptions(merge: true)); // merge: true preserves other fields
+          SetOptions(merge: true));
 
       return "T-${nextNumber.toString().padLeft(2, '0')}";
     });
   }
 
-// 3. Update the _generateTokenAndCreateOrder function
-  Future<void> _generateTokenAndCreateOrder() async {
+  // --- 2. GENERATE TOKEN ONLY (DOES NOT PLACE ORDER YET) ---
+  Future<void> _generateTokenOnly() async {
     setState(() => _isGenerating = true);
     try {
-      User? user = FirebaseAuth.instance.currentUser;
       String newOrderId = "ORDER_${DateTime.now().millisecondsSinceEpoch}";
-      // CALL THE FUNCTION HERE
       String newToken = await getNextTokenNumber();
-      int prepTime = await _calculateRealPrepTime(widget.orderItems);
-      await FirebaseFirestore.instance
-          .collection('orders')
-          .doc(newOrderId)
-          .set({
-        'orderId': newOrderId,
-        'tokenNumber': newToken, // Will now be T-01, T-02...
-        'userId': user?.uid ?? 'guest',
-        'userName': user?.displayName ?? 'Student',
-        'items': widget.orderItems,
-        'totalAmount': widget.amount,
-        'paymentMethod': 'Pay on Counter',
-        'status': 'Pending Payment',
-        'totalPrepTime': prepTime,
-        'timestamp': FieldValue.serverTimestamp(),
-        'isCompleted': false,
-        'feedbackGiven': false,
-        'overdue': false,
-      });
+      int pTime = await _calculateRealPrepTime(widget.orderItems);
 
-      // ADMIN NOTIFICATION
-      await FirebaseFirestore.instance.collection('admin_notifications').add({
-        'title': 'New Cash Order',
-        'message':
-            'Token $newToken: New cash order waiting for payment confirmation.',
-        'type': 'new_order',
-        'orderId': newOrderId,
-        'isRead': false,
-        'timestamp':
-            FieldValue.serverTimestamp(), // Field must be named 'timestamp'
-      });
-
-      // ... rest of your existing transaction logic ...
       setState(() {
         tokenNumber = newToken;
         orderId = newOrderId;
+        _prepTime = pTime; // Store time locally
         isTokenGenerated = true;
         _isGenerating = false;
       });
@@ -165,103 +114,160 @@ class _PayOnCounterScreenState extends State<PayOnCounterScreen> {
     }
   }
 
-  // --- 3. CANCEL ORDER LOGIC ---
-  Future<void> _cancelAndGoBack() async {
-    if (orderId != null) {
-      // Delete the pending order so it doesn't stay in the system
+  // --- 3. PROCEED & PLACE ORDER IN DATABASE ---
+  Future<void> _placeOrderAndProceed() async {
+    setState(() => _isProceeding = true);
+    try {
+      User? user = FirebaseAuth.instance.currentUser;
+      
+      // NOW we place the order in Firebase because the user clicked Proceed
       await FirebaseFirestore.instance
           .collection('orders')
           .doc(orderId)
-          .delete();
+          .set({
+        'orderId': orderId,
+        'tokenNumber': tokenNumber,
+        'userId': user?.uid ?? 'guest',
+        'userName': user?.displayName ?? 'Student',
+        'items': widget.orderItems,
+        'totalAmount': widget.amount,
+        'paymentMethod': 'Pay on Counter',
+        'status': 'Pending Payment', // Waiting for admin to confirm cash
+        'totalPrepTime': _prepTime,
+        'timestamp': FieldValue.serverTimestamp(),
+        'isCompleted': false,
+        'feedbackGiven': false,
+        'overdue': false,
+      });
+
+      // Notify Admin
+      await FirebaseFirestore.instance.collection('admin_notifications').add({
+        'title': 'New Cash Order',
+        'message': 'Token $tokenNumber: New cash order waiting for payment confirmation.',
+        'type': 'new_order',
+        'orderId': orderId,
+        'isRead': false,
+        'timestamp': FieldValue.serverTimestamp(),
+      });
+
+      setState(() => _isProceeding = false);
+
+      if (mounted) {
+        // Go to MakePaymentScreen (Waiting screen)
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => MakePaymentScreen(
+              orderId: orderId!,
+              tokenNumber: tokenNumber!,
+              amount: widget.amount,
+              orderItems: widget.orderItems,
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      setState(() => _isProceeding = false);
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text("Error: $e")));
     }
+  }
+
+  // --- 4. CANCEL ORDER LOGIC (No DB deletion needed anymore!) ---
+  void _cancelAndGoBack() {
+    // Because the order wasn't placed in DB yet, we just pop!
     Navigator.pop(context);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: const Color(0xFFFDFDFD), // Clean white background
       appBar: AppBar(
         title: const Text("Pay on Counter",
-            style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+            style: TextStyle(
+                color: Colors.black87, 
+                fontSize: 18,
+                fontWeight: FontWeight.w600)), // Reduced bold
         backgroundColor: Colors.white,
         elevation: 0,
+        surfaceTintColor: Colors.transparent,
         centerTitle: true,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
+          icon: const Icon(Icons.arrow_back, color: Colors.black87),
           onPressed: () => Navigator.pop(context),
         ),
       ),
       body: Center(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(30.0),
+          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 30.0),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               const Text("Step 1 of 2",
-                  style: TextStyle(color: Colors.grey, fontSize: 16)),
-              const SizedBox(height: 20),
+                  style: TextStyle(
+                      color: Colors.grey, 
+                      fontSize: 14, 
+                      fontWeight: FontWeight.w500)), // Lightened
+              const SizedBox(height: 24),
 
               // --- STATE A: TOKEN GENERATED ---
               if (isTokenGenerated) ...[
                 Container(
                   width: double.infinity,
                   padding:
-                      const EdgeInsets.symmetric(horizontal: 20, vertical: 40),
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 35),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFFFF3E0),
+                    color: primaryLightGreen.withOpacity(0.15), // Soft pastel background
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: Colors.orange.shade200, width: 2),
+                    border: Border.all(color: primaryLightGreen.withOpacity(0.6), width: 1.5),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.orange.withOpacity(0.1),
+                        color: Colors.black.withOpacity(0.02),
                         blurRadius: 10,
-                        offset: const Offset(0, 5),
+                        offset: const Offset(0, 4),
                       )
                     ],
                   ),
                   child: Column(
                     children: [
-                      const Text(
+                      Text(
                         "TOKEN NUMBER",
                         style: TextStyle(
-                            color: Colors.orange,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 14,
-                            letterSpacing: 2.0),
+                            color: Colors.green.shade800,
+                            fontWeight: FontWeight.w600, // Semi-bold instead of heavy bold
+                            fontSize: 12,
+                            letterSpacing: 1.5),
                       ),
-                      const SizedBox(height: 15),
+                      const SizedBox(height: 12),
                       Text(
                         tokenNumber!,
-                        style: const TextStyle(
-                            fontSize: 48,
-                            fontWeight: FontWeight.w900,
-                            color: Colors.black87),
+                        style: TextStyle(
+                            fontSize: 36, // Reduced from 48
+                            fontWeight: FontWeight.w500, // Reduced from w900
+                            color: darkGreenText),
                       ),
-                      const SizedBox(height: 15),
-                      const Divider(
-                          color: Colors.orange,
-                          thickness: 1,
-                          indent: 40,
-                          endIndent: 40),
-                      const SizedBox(height: 10),
+                      const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 20),
+                        child: Divider(color: Colors.black12, height: 1),
+                      ),
                       Text(
-                        "Pay ₹${widget.amount.toStringAsFixed(2)}",
+                        "Pay ₹${widget.amount.toStringAsFixed(0)}",
                         style: const TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
+                            fontSize: 20, // Reduced from 24
+                            fontWeight: FontWeight.w600, // Reduced bold
                             color: Colors.black87),
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(height: 30),
-                const Text(
+                const SizedBox(height: 25),
+                Text(
                   "Token generated! Show this to the cashier.",
                   textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 16, color: Colors.grey),
+                  style: TextStyle(fontSize: 14, color: Colors.grey.shade500),
                 ),
-                const SizedBox(height: 40),
+                const SizedBox(height: 35),
 
                 // --- PROCEED & CANCEL BUTTONS ---
                 Row(
@@ -269,52 +275,44 @@ class _PayOnCounterScreenState extends State<PayOnCounterScreen> {
                     // Cancel Button
                     Expanded(
                       child: SizedBox(
-                        height: 55,
+                        height: 50,
                         child: OutlinedButton(
                           onPressed: _cancelAndGoBack,
                           style: OutlinedButton.styleFrom(
-                            side: const BorderSide(color: Colors.red),
+                            side: BorderSide(color: Colors.red.shade300, width: 1.2), // Softer red
                             shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(12)),
                           ),
-                          child: const Text("Cancel",
+                          child: Text("Cancel",
                               style: TextStyle(
-                                  fontSize: 18,
-                                  color: Colors.red,
-                                  fontWeight: FontWeight.bold)),
+                                  fontSize: 14,
+                                  color: Colors.red.shade400,
+                                  fontWeight: FontWeight.w500)), // Reduced bold
                         ),
                       ),
                     ),
                     const SizedBox(width: 15),
-                    // Proceed Button
+                    
+                    // Proceed Button (PLACES ORDER)
                     Expanded(
                       child: SizedBox(
-                        height: 55,
+                        height: 50,
                         child: ElevatedButton(
-                          onPressed: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => MakePaymentScreen(
-                                  orderId: orderId!,
-                                  tokenNumber: tokenNumber!,
-                                  amount: widget.amount,
-                                  orderItems: widget.orderItems,
-                                ),
-                              ),
-                            );
-                          },
+                          onPressed: _isProceeding ? null : _placeOrderAndProceed,
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.green,
+                            backgroundColor: primaryLightGreen, // Pastel green theme
+                            foregroundColor: Colors.black87, // Dark text
                             shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(12)),
-                            elevation: 2,
+                            elevation: 0, // Flat design
                           ),
-                          child: const Text("Proceed",
-                              style: TextStyle(
-                                  fontSize: 18,
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold)),
+                          child: _isProceeding
+                              ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.black87, strokeWidth: 2))
+                              : const Text("Proceed",
+                                  style: TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w600,
+                                      letterSpacing: 0.5)),
                         ),
                       ),
                     ),
@@ -324,52 +322,70 @@ class _PayOnCounterScreenState extends State<PayOnCounterScreen> {
               // --- STATE B: INITIAL STATE ---
               else ...[
                 Container(
-                  padding: const EdgeInsets.all(20),
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 30),
                   decoration: BoxDecoration(
-                    color: Colors.grey.shade50,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: Colors.grey.shade200),
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: primaryLightGreen.withOpacity(0.6), width: 1.5),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.02),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4)
+                      )
+                    ]
                   ),
                   child: Column(
                     children: [
-                      const Icon(Icons.confirmation_number_outlined,
-                          size: 60, color: Colors.green),
-                      const SizedBox(height: 15),
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: primaryLightGreen.withOpacity(0.2),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(Icons.confirmation_number_outlined,
+                            size: 40, color: Colors.green.shade700), // Elegant icon
+                      ),
+                      const SizedBox(height: 16),
                       const Text(
                         "Generate Token",
                         style: TextStyle(
-                            fontSize: 20, fontWeight: FontWeight.bold),
+                            fontSize: 18, 
+                            fontWeight: FontWeight.w600, // Reduced bold
+                            color: Colors.black87),
                       ),
                       const SizedBox(height: 10),
                       Text(
-                        "Click below to generate your token.\nShow it to the cashier to pay ₹${widget.amount.toStringAsFixed(2)}.",
+                        "Click below to generate your token.\nShow it to the cashier to pay ₹${widget.amount.toStringAsFixed(0)}.",
                         textAlign: TextAlign.center,
-                        style: const TextStyle(color: Colors.grey),
+                        style: TextStyle(color: Colors.grey.shade500, fontSize: 13, height: 1.4),
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(height: 100), // Spacer
+                const SizedBox(height: 50), 
 
+                // Generate Token Button (DOES NOT PLACE ORDER)
                 SizedBox(
                   width: double.infinity,
-                  height: 55,
+                  height: 50,
                   child: ElevatedButton(
                     onPressed:
-                        _isGenerating ? null : _generateTokenAndCreateOrder,
+                        _isGenerating ? null : _generateTokenOnly,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFA5D6A7),
+                      backgroundColor: primaryLightGreen, // Pastel green theme
+                      foregroundColor: Colors.black87, // Dark text
                       shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12)),
                       elevation: 0,
                     ),
                     child: _isGenerating
-                        ? const CircularProgressIndicator(color: Colors.black)
+                        ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.black87, strokeWidth: 2))
                         : const Text("Generate Token",
                             style: TextStyle(
-                                fontSize: 18,
-                                color: Colors.black,
-                                fontWeight: FontWeight.bold)),
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600,
+                                letterSpacing: 0.5)),
                   ),
                 ),
               ],

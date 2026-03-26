@@ -1,7 +1,6 @@
 // ignore_for_file: deprecated_member_use
 
 import 'dart:convert';
-import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_application_1/screens/favorite_manager.dart'
     show FavoriteManager;
@@ -17,6 +16,9 @@ class FavoriteScreen extends StatefulWidget {
 class _FavoriteScreenState extends State<FavoriteScreen> {
   // Singleton Instance
   final FavoriteManager _favoriteManager = FavoriteManager();
+  
+  // Elegant pastel theme color
+  final Color primaryLightGreen = const Color.fromRGBO(165, 214, 167, 1);
 
   @override
   void initState() {
@@ -28,7 +30,10 @@ class _FavoriteScreenState extends State<FavoriteScreen> {
   // --- IMAGE BUILDER ---
   Widget _buildImage(String path) {
     if (path.isEmpty) {
-      return const Icon(Icons.fastfood, color: Colors.grey, size: 40);
+      return Container(
+        color: Colors.grey.shade50,
+        child: const Center(child: Icon(Icons.fastfood, color: Colors.grey, size: 30))
+      );
     }
     try {
       if (path.startsWith('data:image')) {
@@ -71,43 +76,45 @@ class _FavoriteScreenState extends State<FavoriteScreen> {
         final favorites = _favoriteManager.favoriteItems;
 
         return Scaffold(
-          backgroundColor: Colors.white, // White background matches your design
+          backgroundColor: const Color(0xFFFDFDFD), // Clean white background
           appBar: AppBar(
             title: const Text(
               "Favorite",
               style:
-                  TextStyle(fontWeight: FontWeight.bold, color: Colors.black),
+                  TextStyle(fontWeight: FontWeight.w600, fontSize: 18, color: Colors.black87), // Reduced bold
             ),
             centerTitle: true,
             backgroundColor: Colors.white,
+            surfaceTintColor: Colors.transparent,
             elevation: 0,
             leading: IconButton(
-              icon: const Icon(Icons.arrow_back, color: Colors.black),
+              icon: const Icon(Icons.arrow_back, color: Colors.black87),
               onPressed: () => Navigator.pop(context),
             ),
             actions: [
               if (favorites.isNotEmpty)
                 IconButton(
-                  icon: const Icon(Icons.delete_sweep_outlined,
-                      color: Colors.red),
+                  icon: Icon(Icons.delete_sweep_outlined,
+                      color: Colors.red.shade400),
                   onPressed: () {
                     showDialog(
                       context: context,
                       builder: (ctx) => AlertDialog(
-                        title: const Text("Clear Favorites?"),
+                        backgroundColor: Colors.white,
+                        title: const Text("Clear Favorites?", style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
                         content: const Text(
-                            "Are you sure you want to remove all items?"),
+                            "Are you sure you want to remove all items?", style: TextStyle(color: Colors.grey, fontSize: 14)),
                         actions: [
                           TextButton(
                               onPressed: () => Navigator.pop(ctx),
-                              child: const Text("Cancel")),
+                              child: const Text("Cancel", style: TextStyle(color: Colors.grey))),
                           TextButton(
                             onPressed: () {
                               _favoriteManager.clearFavorites();
                               Navigator.pop(ctx);
                             },
                             child: const Text("Clear All",
-                                style: TextStyle(color: Colors.red)),
+                                style: TextStyle(color: Colors.red, fontWeight: FontWeight.w600)),
                           ),
                         ],
                       ),
@@ -117,14 +124,14 @@ class _FavoriteScreenState extends State<FavoriteScreen> {
             ],
           ),
           body: favorites.isEmpty
-              ? _buildEmptyState() // <--- NEW UI WHEN EMPTY
-              : _buildFavoriteList(favorites), // EXISTING LIST
+              ? _buildEmptyState() 
+              : _buildFavoriteList(favorites), 
         );
       },
     );
   }
 
-  // --- 1. NEW EMPTY STATE UI (Matches your Image) ---
+  // --- 1. ELEGANT EMPTY STATE UI ---
   Widget _buildEmptyState() {
     return Center(
       child: Column(
@@ -134,7 +141,7 @@ class _FavoriteScreenState extends State<FavoriteScreen> {
           Icon(
             Icons.favorite_border_rounded,
             size: 120,
-            color: const Color(0xFFA5D6A7).withOpacity(0.8), // Light Green
+            color: primaryLightGreen.withOpacity(0.8), // Matching theme color
           ),
           const SizedBox(height: 30),
 
@@ -142,22 +149,22 @@ class _FavoriteScreenState extends State<FavoriteScreen> {
           const Text(
             "No liked Items yet",
             style: TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.bold,
-              color: Colors.black,
+              fontSize: 20,
+              fontWeight: FontWeight.w600, // Reduced bold
+              color: Colors.black87,
             ),
           ),
           const SizedBox(height: 12),
 
           // Subtitle
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 40),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 40),
             child: Text(
               "Tab the heart icon on any food to save it here",
               textAlign: TextAlign.center,
               style: TextStyle(
-                fontSize: 16,
-                color: Colors.grey,
+                fontSize: 14,
+                color: Colors.grey.shade500,
                 height: 1.5,
               ),
             ),
@@ -167,15 +174,15 @@ class _FavoriteScreenState extends State<FavoriteScreen> {
 
           // Browse Menu Button
           SizedBox(
-            width: 220,
-            height: 55,
+            width: 200,
+            height: 50,
             child: ElevatedButton(
               onPressed: () {
                 Navigator.pop(context); // Go back to Home
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFC8E6C9), // Pastel Green
-                foregroundColor: Colors.black,
+                backgroundColor: primaryLightGreen, // Pastel Green
+                foregroundColor: Colors.black87, // Dark text
                 elevation: 0,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
@@ -183,7 +190,7 @@ class _FavoriteScreenState extends State<FavoriteScreen> {
               ),
               child: const Text(
                 "Browse Menu",
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, letterSpacing: 0.5),
               ),
             ),
           ),
@@ -192,10 +199,10 @@ class _FavoriteScreenState extends State<FavoriteScreen> {
     );
   }
 
-  // --- 2. FAVORITE LIST UI (When items exist) ---
+  // --- 2. ELEGANT FAVORITE LIST UI ---
   Widget _buildFavoriteList(List<Map<String, dynamic>> favorites) {
     return ListView.builder(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
       itemCount: favorites.length,
       itemBuilder: (context, index) {
         final item = favorites[index];
@@ -210,7 +217,7 @@ class _FavoriteScreenState extends State<FavoriteScreen> {
           curve: Curves.easeOut,
           builder: (context, value, child) {
             return Transform.translate(
-              offset: Offset(0, 50 * (1 - value)),
+              offset: Offset(0, 30 * (1 - value)),
               child: Opacity(opacity: value, child: child),
             );
           },
@@ -229,21 +236,29 @@ class _FavoriteScreenState extends State<FavoriteScreen> {
               ).then((_) => setState(() {}));
             },
             child: Container(
-              margin: const EdgeInsets.only(bottom: 16),
-              padding: const EdgeInsets.all(12),
+              margin: const EdgeInsets.only(bottom: 14),
+              padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: const Color(0xFFF9F9F9), // Very light grey card
+                color: Colors.white, 
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.grey.shade200),
+                border: Border.all(color: primaryLightGreen.withOpacity(0.6), width: 1.2), // Elegant light green border
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.02),
+                    blurRadius: 8,
+                    offset: const Offset(0, 3)
+                  )
+                ]
               ),
               child: Row(
                 children: [
                   // Image
                   Container(
-                    width: 80,
-                    height: 80,
+                    width: 70,
+                    height: 70,
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.grey.shade100),
                       color: Colors.white,
                     ),
                     child: ClipRRect(
@@ -251,7 +266,7 @@ class _FavoriteScreenState extends State<FavoriteScreen> {
                       child: _buildImage(imagePath),
                     ),
                   ),
-                  const SizedBox(width: 15),
+                  const SizedBox(width: 14),
 
                   // Text Details
                   Expanded(
@@ -261,7 +276,7 @@ class _FavoriteScreenState extends State<FavoriteScreen> {
                         Text(
                           title,
                           style: const TextStyle(
-                              fontSize: 16, fontWeight: FontWeight.bold),
+                              fontSize: 15, fontWeight: FontWeight.w600, color: Colors.black87), // Semi-bold
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -269,17 +284,17 @@ class _FavoriteScreenState extends State<FavoriteScreen> {
                         Text(
                           subtitle,
                           style:
-                              TextStyle(fontSize: 12, color: Colors.grey[600]),
+                              TextStyle(fontSize: 12, color: Colors.grey.shade500, fontWeight: FontWeight.normal),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          price,
-                          style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.green),
+                          price.startsWith('₹') ? price : "₹$price",
+                          style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600, // Semi-bold
+                              color: Colors.green.shade700),
                         ),
                       ],
                     ),
@@ -287,13 +302,13 @@ class _FavoriteScreenState extends State<FavoriteScreen> {
 
                   // Heart/Remove Button
                   IconButton(
-                    icon: const Icon(Icons.favorite, color: Colors.red),
+                    icon: Icon(Icons.favorite, color: Colors.red.shade400, size: 24),
                     onPressed: () {
                       _favoriteManager.removeFavorite(title);
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
-                          content: Text("$title removed"),
-                          duration: const Duration(milliseconds: 1000),
+                          content: Text("$title removed", style: const TextStyle(fontWeight: FontWeight.w500)),
+                          duration: const Duration(milliseconds: 1500),
                           behavior: SnackBarBehavior.floating,
                           backgroundColor: Colors.black87,
                           shape: RoundedRectangleBorder(

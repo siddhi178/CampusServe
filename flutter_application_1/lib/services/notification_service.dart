@@ -2,11 +2,50 @@
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 class NotificationService {
   static final FirebaseFirestore _db = FirebaseFirestore.instance;
+  static final FlutterLocalNotificationsPlugin _localNotificationsPlugin =
+      FlutterLocalNotificationsPlugin();
 
-  // --- SEND NOTIFICATION (Used by User Actions like Order/Wallet) ---
+  // --- INITIALIZE LOCAL NOTIFICATIONS (Call this in main.dart) ---
+  static Future<void> initialize() async {
+    const AndroidInitializationSettings androidInitializationSettings =
+        AndroidInitializationSettings('@mipmap/ic_launcher'); // Make sure you have an app icon
+
+    const InitializationSettings initializationSettings =
+        InitializationSettings(
+      android: androidInitializationSettings,
+    );
+
+    await _localNotificationsPlugin.initialize(initializationSettings);
+  }
+
+  // --- PLAY SOUND & SHOW BANNER ON PHONE ---
+  static Future<void> _showLocalNotification(String title, String message) async {
+    const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
+      'campus_serve_channel', // channel Id
+      'Campus Serve Notifications', // channel Name
+      channelDescription: 'Notifications for order updates and alerts',
+      importance: Importance.max,
+      priority: Priority.high,
+      playSound: true, // THIS PLAYS THE SOUND
+      enableVibration: true,
+    );
+
+    const NotificationDetails platformDetails =
+        NotificationDetails(android: androidDetails);
+
+    await _localNotificationsPlugin.show(
+      DateTime.now().millisecond, // Random ID
+      title,
+      message,
+      platformDetails,
+    );
+  }
+
+  // --- SEND NOTIFICATION TO DB & TRIGGER SOUND ---
   static Future<void> sendNotification({
     required String title,
     required String message,
@@ -17,6 +56,7 @@ class NotificationService {
     if (user == null) return;
 
     try {
+      // 1. Save to Database
       await _db.collection('user_notifications').add({
         'userId': user.uid,
         'title': title,
@@ -26,17 +66,12 @@ class NotificationService {
         'isRead': false,
         'timestamp': FieldValue.serverTimestamp(),
       });
+
+      // 2. Trigger the phone to ring/buzz and show banner
+      await _showLocalNotification(title, message);
+      
     } catch (e) {
       print("Error sending notification: $e");
     }
   }
-
-  // --- GET NOTIFICATIONS STREAM (Combined Personal + General) ---
-  // This logic is usually handled in the UI (StreamBuilder), but this helper prepares the query.
-  // Since Firestore doesn't support "OR" queries across fields easily, we usually fetch
-  // user-specific ones. For "General" (All Users), we need a separate query or duplicate them.
-  //
-  // STRATEGY: The Admin Panel writes to 'notifications' (General).
-  // User Actions write to 'user_notifications' (Personal).
-  // We will display BOTH in the Notification Screen.
 }

@@ -1,4 +1,4 @@
-// ignore_for_file: deprecated_member_use, curly_braces_in_flow_control_structures, unused_element, prefer_final_fields
+// ignore_for_file: deprecated_member_use, curly_braces_in_flow_control_structures, unused_element, prefer_final_fields, use_build_context_synchronously
 
 import 'dart:convert';
 import 'dart:async';
@@ -37,7 +37,9 @@ class _HomeScreenState extends State<HomeScreen>
 
   final Color themeColor = const Color(0xFFBEDFC8);
   final Color darkGreen = const Color(0xFF1B5E20);
+  final Color darkGreenText = const Color(0xFF1B5E20); 
   final Color mcdLightGreen = const Color.fromARGB(184, 14, 78, 0);
+  final Color primaryLightGreen = const Color.fromRGBO(165, 214, 167, 1);
 
   late PageController _pageController;
   Timer? _carouselTimer;
@@ -147,7 +149,7 @@ class _HomeScreenState extends State<HomeScreen>
 
   Widget _buildImage(String path, {BoxFit fit = BoxFit.cover}) {
     Widget errorWidget = Container(
-        color: Colors.grey.shade100,
+        color: Colors.grey.shade50,
         child: const Center(
             child: Icon(Icons.fastfood, color: Colors.grey, size: 24)));
     if (path.isEmpty) return errorWidget;
@@ -369,28 +371,28 @@ class _HomeScreenState extends State<HomeScreen>
       icon = Icons.new_releases;
     } else if (rating >= 4.5 && orderCount > 5) {
       text = "TOP RATED";
-      bgColor = Colors.green.shade50;
-      textColor = Colors.green.shade900;
+      bgColor = primaryLightGreen.withOpacity(0.3);
+      textColor = darkGreen;
       icon = Icons.star;
     }
 
     if (text.isEmpty) return const SizedBox.shrink();
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
       decoration: BoxDecoration(
           color: bgColor,
           borderRadius: BorderRadius.circular(4),
           border: Border.all(color: textColor.withOpacity(0.3))),
       child: Row(mainAxisSize: MainAxisSize.min, children: [
         if (icon != null) ...[
-          Icon(icon, size: 9, color: textColor),
-          const SizedBox(width: 3)
+          Icon(icon, size: 8, color: textColor),
+          const SizedBox(width: 2)
         ],
         Text(text,
             style: TextStyle(
-                fontSize: 8,
-                fontWeight: FontWeight.w900,
+                fontSize: 7, 
+                fontWeight: FontWeight.w500,
                 color: textColor,
                 letterSpacing: 0.3)),
       ]),
@@ -434,11 +436,43 @@ class _HomeScreenState extends State<HomeScreen>
                     String imageSource = data['image'] ?? '';
 
                     return GestureDetector(
-                      onTap: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                              builder: (_) =>
-                                  AnnouncementDetailScreen(data: data))),
+                      onTap: () async {
+                        if (data['taggedItemId'] != null && data['taggedItemId'].toString().isNotEmpty) {
+                          try {
+                            var doc = await FirebaseFirestore.instance.collection('menu').doc(data['taggedItemId']).get();
+                            if (doc.exists && mounted) {
+                              var itemData = doc.data() as Map<String, dynamic>;
+                              String priceStr = itemData['price'].toString().replaceAll('₹', '').trim();
+                              
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => FoodDetailScreen(
+                                    title: itemData['name'] ?? '',
+                                    subtitle: itemData['short_desc'] ?? '',
+                                    price: "₹$priceStr",
+                                    imagePath: itemData['image'] ?? itemData['image_url'] ?? '',
+                                    category: itemData['category'] ?? '',
+                                    subCategory: itemData['sub_category'] ?? ''
+                                  )
+                                )
+                              );
+                              return; 
+                            }
+                          } catch (e) {
+                            debugPrint("Error fetching tagged item: $e");
+                          }
+                        }
+                        
+                        if (mounted) {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => AnnouncementDetailScreen(data: data)
+                            )
+                          );
+                        }
+                      },
                       child: Container(
                         margin: const EdgeInsets.symmetric(horizontal: 8),
                         decoration: BoxDecoration(
@@ -489,15 +523,15 @@ class _HomeScreenState extends State<HomeScreen>
                                       overflow: TextOverflow.ellipsis,
                                       style: TextStyle(
                                           color: Colors.white,
-                                          fontWeight: FontWeight.w900,
+                                          fontWeight: FontWeight.w500,
                                           letterSpacing: 0.3,
-                                          fontSize: 16,
+                                          fontSize: 15,
                                           shadows: [
                                             Shadow(
                                                 offset: const Offset(0, 1),
-                                                blurRadius: 8.0,
+                                                blurRadius: 6.0,
                                                 color: Colors.black
-                                                    .withOpacity(0.8))
+                                                    .withOpacity(0.6))
                                           ]))),
                             ],
                           ),
@@ -536,38 +570,38 @@ class _HomeScreenState extends State<HomeScreen>
               margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                  color: Colors.green.shade50,
+                  color: primaryLightGreen.withOpacity(0.2), 
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: Colors.green.shade300, width: 2),
+                  border: Border.all(color: primaryLightGreen.withOpacity(0.6), width: 1.5),
                   boxShadow: [
                     BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
+                        color: Colors.black.withOpacity(0.02),
                         blurRadius: 10,
-                        offset: const Offset(0, 5))
+                        offset: const Offset(0, 4))
                   ]),
               child: Row(
                 children: [
                   Container(
                       padding: const EdgeInsets.all(10),
-                      decoration: const BoxDecoration(
-                          color: Colors.green, shape: BoxShape.circle),
-                      child: const Icon(Icons.account_balance_wallet,
-                          color: Colors.white, size: 24)),
+                      decoration: BoxDecoration(
+                          color: primaryLightGreen, shape: BoxShape.circle),
+                      child: Icon(Icons.account_balance_wallet,
+                          color: darkGreen, size: 24)),
                   const SizedBox(width: 15),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text("Money Secured!",
+                        Text("Money Secured!",
                             style: TextStyle(
-                                fontWeight: FontWeight.w900,
-                                color: Colors.green,
-                                fontSize: 16)),
+                                fontWeight: FontWeight.w500,
+                                color: darkGreen,
+                                fontSize: 15)),
                         const SizedBox(height: 4),
                         Text(
                             "You didn't collect your Token $token cash before 5 PM. We safely deposited ₹$amount into your Wallet.",
                             style: TextStyle(
-                                fontSize: 12, color: Colors.green.shade900)),
+                                fontSize: 11, color: Colors.green.shade900)),
                       ],
                     ),
                   ),
@@ -580,12 +614,13 @@ class _HomeScreenState extends State<HomeScreen>
                           .update({'unseenWalletTransfer': false});
                     },
                     style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green,
+                        backgroundColor: darkGreen,
+                        elevation: 0,
                         shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(8))),
                     child: const Text("Okay",
                         style: TextStyle(
-                            color: Colors.white, fontWeight: FontWeight.bold)),
+                            color: Colors.white, fontWeight: FontWeight.w500)),
                   )
                 ],
               ),
@@ -672,8 +707,8 @@ class _HomeScreenState extends State<HomeScreen>
             String text;
             String subText;
             Color iconColor = Colors.green;
-            Color textColor = Colors.black;
-            Color borderColor = Colors.green;
+            Color textColor = Colors.black87;
+            Color borderColor = primaryLightGreen.withOpacity(0.6);
 
             if (status == 'Ready') {
               icon = Icons.check_circle;
@@ -687,7 +722,7 @@ class _HomeScreenState extends State<HomeScreen>
               subText = "Pay at counter to start order";
               iconColor = Colors.orange;
               textColor = Colors.orange.shade900;
-              borderColor = Colors.orange;
+              borderColor = Colors.orange.shade200;
               timeString = "Wait";
             } else if (status.contains('Verify')) {
               icon = Icons.verified_user;
@@ -695,7 +730,7 @@ class _HomeScreenState extends State<HomeScreen>
               subText = "Admin has the cash. Click to verify.";
               iconColor = Colors.purple;
               textColor = Colors.purple.shade900;
-              borderColor = Colors.purple;
+              borderColor = Colors.purple.shade200;
               timeString = "Collect";
             } else if (status.contains('Refund')) {
               icon = Icons.account_balance_wallet;
@@ -705,7 +740,7 @@ class _HomeScreenState extends State<HomeScreen>
                   : "Amount is being refunded";
               iconColor = Colors.orange;
               textColor = Colors.orange.shade900;
-              borderColor = Colors.orange;
+              borderColor = Colors.orange.shade200;
               timeString = "Refunding";
             } else if (status == 'Rescheduled') {
               icon = Icons.calendar_month;
@@ -714,7 +749,7 @@ class _HomeScreenState extends State<HomeScreen>
                   "Scheduled for ${orderData['scheduledSlot'] ?? 'later'}";
               iconColor = Colors.blue;
               textColor = Colors.blue.shade900;
-              borderColor = Colors.blue;
+              borderColor = Colors.blue.shade200;
               timeString = "Paused";
             } else if (isActuallyOverdue) {
               icon = Icons.warning_amber_rounded;
@@ -722,7 +757,7 @@ class _HomeScreenState extends State<HomeScreen>
               subText = "Token: $token - Kitchen is busy";
               iconColor = Colors.red;
               textColor = Colors.red.shade900;
-              borderColor = Colors.red;
+              borderColor = Colors.red.shade200;
             } else {
               icon = Icons.soup_kitchen;
               text = "Preparing Order...";
@@ -730,7 +765,7 @@ class _HomeScreenState extends State<HomeScreen>
             }
 
             return Padding(
-              padding: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.only(bottom: 12),
               child: GestureDetector(
                 onTap: () => Navigator.push(
                     context,
@@ -741,30 +776,30 @@ class _HomeScreenState extends State<HomeScreen>
                   width: double.infinity,
                   margin: const EdgeInsets.symmetric(horizontal: 20),
                   padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   decoration: BoxDecoration(
                       color: isActuallyOverdue
                           ? const Color(0xFFFFEBEE)
                           : Colors.white,
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(16),
                       border: Border.all(
                           color: borderColor,
-                          width: isActuallyOverdue ? 1.2 : 1),
+                          width: 1.5),
                       boxShadow: [
                         BoxShadow(
-                            color: Colors.black.withOpacity(0.04),
-                            blurRadius: 6,
-                            offset: const Offset(0, 2))
+                            color: Colors.black.withOpacity(0.02),
+                            blurRadius: 8,
+                            offset: const Offset(0, 3))
                       ]),
                   child: Row(
                     children: [
                       Container(
-                          padding: const EdgeInsets.all(6),
+                          padding: const EdgeInsets.all(10),
                           decoration: BoxDecoration(
                               color: iconColor.withOpacity(0.1),
                               shape: BoxShape.circle),
-                          child: Icon(icon, color: iconColor, size: 18)),
-                      const SizedBox(width: 12),
+                          child: Icon(icon, color: iconColor, size: 20)),
+                      const SizedBox(width: 14),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -773,14 +808,14 @@ class _HomeScreenState extends State<HomeScreen>
                             Text(text,
                                 style: TextStyle(
                                     color: textColor,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 13)),
+                                    fontWeight: FontWeight.w500,
+                                    fontSize: 14)),
                             const SizedBox(height: 2),
                             Text(subText,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: const TextStyle(
-                                    color: Colors.grey, fontSize: 11)),
+                                    color: Colors.grey, fontSize: 12)),
                           ],
                         ),
                       ),
@@ -791,15 +826,15 @@ class _HomeScreenState extends State<HomeScreen>
                           decoration: BoxDecoration(
                               color: isActuallyOverdue
                                   ? Colors.red
-                                  : Colors.green.shade50,
-                              borderRadius: BorderRadius.circular(6)),
+                                  : primaryLightGreen.withOpacity(0.3),
+                              borderRadius: BorderRadius.circular(8)),
                           child: Text(timeString,
                               style: TextStyle(
                                   color: isActuallyOverdue
                                       ? Colors.white
-                                      : Colors.green,
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.bold)))
+                                      : darkGreen,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w500)))
                     ],
                   ),
                 ),
@@ -816,28 +851,32 @@ class _HomeScreenState extends State<HomeScreen>
     return GestureDetector(
       onTap: () => setState(() => _selectedCategory = name),
       child: Container(
-        width: 75,
-        padding: const EdgeInsets.all(8),
+        width: 65, 
+        height: 65,
+        padding: const EdgeInsets.all(4),
         decoration: BoxDecoration(
-            color: selected ? const Color(0xFFDFF5E1) : Colors.white,
-            borderRadius: BorderRadius.circular(16),
+            color: selected ? primaryLightGreen.withOpacity(0.2) : Colors.white,
+            borderRadius: BorderRadius.circular(14),
             border: Border.all(
-                color: selected ? Colors.green : Colors.grey.shade300,
-                width: selected ? 1.5 : 1)),
+                color: selected ? primaryLightGreen : Colors.grey.shade200,
+                width: 1.0)),
         child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-          SizedBox(
-              height: 35,
-              width: 35,
-              child: _buildImage(path, fit: BoxFit.contain)),
-          const SizedBox(height: 6),
+          Container(
+            height: 30,
+            width: 30,
+            decoration: const BoxDecoration(shape: BoxShape.circle),
+            clipBehavior: Clip.hardEdge,
+            child: _buildImage(path, fit: BoxFit.cover),
+          ),
+          const SizedBox(height: 4),
           Text(name,
               textAlign: TextAlign.center,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
                   fontSize: 10,
-                  fontWeight: selected ? FontWeight.bold : FontWeight.w500,
-                  color: selected ? Colors.green.shade800 : Colors.black87)),
+                  fontWeight: selected ? FontWeight.w500 : FontWeight.w400,
+                  color: selected ? darkGreen : Colors.black54)),
         ]),
       ),
     );
@@ -850,17 +889,23 @@ class _HomeScreenState extends State<HomeScreen>
         const Padding(
             padding: EdgeInsets.symmetric(horizontal: 20.0),
             child: Text("Popular Menu",
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold))),
-        const SizedBox(height: 12),
+                style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.black87))),
+        const SizedBox(height: 10),
         _buildDynamicHorizontalList(),
         const SizedBox(height: 15),
-        const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 20.0),
-            child: Divider(thickness: 1, color: Color(0xFFE0E0E0))),
+        Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20.0),
+            child: Divider(thickness: 1, color: Colors.grey.shade200)),
         const Padding(
             padding: EdgeInsets.symmetric(horizontal: 20.0, vertical: 10),
             child: Text("All Menu Items",
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold))),
+                style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.black87))),
         _buildAllMenuItemsVertical(),
       ],
     );
@@ -875,16 +920,16 @@ class _HomeScreenState extends State<HomeScreen>
           .snapshots(),
       builder: (context, snapshot) {
         if (!snapshot.hasData)
-          return const Center(
-              child: CircularProgressIndicator(color: Colors.green));
+          return Center(
+              child: CircularProgressIndicator(color: primaryLightGreen));
         List<DocumentSnapshot> filteredDocs =
             _applyFilterAndSort(snapshot.data!.docs);
         if (filteredDocs.isEmpty)
-          return const Center(
+          return Center(
               child: Padding(
-                  padding: EdgeInsets.only(top: 20),
+                  padding: const EdgeInsets.only(top: 20),
                   child: Text("No items match your criteria",
-                      style: TextStyle(color: Colors.grey))));
+                      style: TextStyle(color: Colors.grey.shade500))));
 
         Map<String, List<DocumentSnapshot>> groupedItems = {};
         for (var doc in filteredDocs) {
@@ -904,14 +949,14 @@ class _HomeScreenState extends State<HomeScreen>
               children: [
                 Padding(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 20.0, vertical: 8),
+                        horizontal: 20.0, vertical: 12),
                     child: Text(subCategoryName,
                         style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
                             color: Colors.black87))),
                 SizedBox(
-                  height: 255,
+                  height: 230,
                   child: ListView.builder(
                     scrollDirection: Axis.horizontal,
                     padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -934,7 +979,6 @@ class _HomeScreenState extends State<HomeScreen>
                       Timestamp? createdAt =
                           data['timestamp'] ?? data['created_at'];
 
-                      // --- FETCH OFFER DATA ---
                       bool hasOffer = data['has_offer'] ?? false;
                       num offerPercent = data['offer_percentage'] ?? 0;
                       num originalPrice = data['original_price'] ?? price;
@@ -950,7 +994,7 @@ class _HomeScreenState extends State<HomeScreen>
                       }
 
                       return Padding(
-                          padding: const EdgeInsets.only(right: 15),
+                          padding: const EdgeInsets.only(right: 12),
                           child: _buildMenuCard(
                               title,
                               data['short_desc'] ?? '',
@@ -985,13 +1029,13 @@ class _HomeScreenState extends State<HomeScreen>
       query = query.where('category', isEqualTo: filterCategory);
 
     return SizedBox(
-      height: 255,
+      height: 190, 
       child: StreamBuilder<QuerySnapshot>(
         stream: query.snapshots(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting)
-            return const Center(
-                child: CircularProgressIndicator(color: Colors.green));
+            return Center(
+                child: CircularProgressIndicator(color: primaryLightGreen));
           var items = snapshot.data?.docs ?? [];
           var sortedList = _applyFilterAndSort(items);
 
@@ -1006,9 +1050,9 @@ class _HomeScreenState extends State<HomeScreen>
           }
 
           if (sortedList.isEmpty)
-            return const Center(
+            return Center(
                 child: Text("No items match your filter",
-                    style: TextStyle(color: Colors.grey)));
+                    style: TextStyle(color: Colors.grey.shade500)));
           if (sortedList.length > 10) sortedList = sortedList.sublist(0, 10);
 
           return ListView.builder(
@@ -1032,7 +1076,6 @@ class _HomeScreenState extends State<HomeScreen>
                   : (data['rating'] ?? 0);
               Timestamp? createdAt = data['timestamp'] ?? data['created_at'];
 
-              // --- FETCH OFFER DATA ---
               bool hasOffer = data['has_offer'] ?? false;
               num offerPercent = data['offer_percentage'] ?? 0;
               num originalPrice = data['original_price'] ?? price;
@@ -1046,7 +1089,7 @@ class _HomeScreenState extends State<HomeScreen>
               }
 
               return Padding(
-                  padding: const EdgeInsets.only(right: 15),
+                  padding: const EdgeInsets.only(right: 12),
                   child: _buildMenuCard(
                       title,
                       data['short_desc'] ?? '',
@@ -1079,8 +1122,8 @@ class _HomeScreenState extends State<HomeScreen>
       stream: query.snapshots(),
       builder: (context, snapshot) {
         if (!snapshot.hasData)
-          return const Center(
-              child: CircularProgressIndicator(color: Colors.green));
+          return Center(
+              child: CircularProgressIndicator(color: primaryLightGreen));
         var items = snapshot.data?.docs ?? [];
         var displayList = _applyFilterAndSort(items);
 
@@ -1088,11 +1131,11 @@ class _HomeScreenState extends State<HomeScreen>
           displayList.shuffle(Random(_shuffleSeed + 1));
         }
         if (displayList.isEmpty)
-          return const Padding(
-              padding: EdgeInsets.only(top: 20),
+          return Padding(
+              padding: const EdgeInsets.only(top: 20),
               child: Center(
                   child: Text("No items match your filter",
-                      style: TextStyle(color: Colors.grey))));
+                      style: TextStyle(color: Colors.grey.shade500))));
 
         return ListView.builder(
           shrinkWrap: true,
@@ -1115,7 +1158,6 @@ class _HomeScreenState extends State<HomeScreen>
                 : (data['rating'] ?? 0);
             Timestamp? createdAt = data['timestamp'] ?? data['created_at'];
 
-            // --- FETCH OFFER DATA ---
             bool hasOffer = data['has_offer'] ?? false;
             num offerPercent = data['offer_percentage'] ?? 0;
             num originalPrice = data['original_price'] ?? price;
@@ -1148,7 +1190,6 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
-  // --- UPDATED MENU ROW TO SHOW OFFER ---
   Widget _buildMenuRowItem(
       String title,
       String subtitle,
@@ -1180,14 +1221,14 @@ class _HomeScreenState extends State<HomeScreen>
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-            color: const Color(0xFFFCFEFC),
+            color: Colors.white,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.green.shade100, width: 1.5),
+            border: Border.all(color: primaryLightGreen.withOpacity(0.5), width: 1.2),
             boxShadow: [
               BoxShadow(
                   color: Colors.black.withOpacity(0.02),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4))
+                  blurRadius: 8,
+                  offset: const Offset(0, 3))
             ]),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1203,116 +1244,94 @@ class _HomeScreenState extends State<HomeScreen>
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                          fontSize: 15,
                           color: Colors.black87)),
                   const SizedBox(height: 4),
                   Row(
                     children: [
-                      // --- SHOW CROSSED OUT PRICE IF OFFER EXISTS ---
                       if (hasOffer)
                         Text("₹$originalPrice",
                             style: TextStyle(
-                                fontWeight: FontWeight.bold,
+                                fontWeight: FontWeight.w400,
                                 fontSize: 12,
-                                color: Colors.grey.shade500,
+                                color: Colors.grey.shade400,
                                 decoration: TextDecoration.lineThrough)),
                       if (hasOffer) const SizedBox(width: 6),
                       Text("₹$price",
                           style: const TextStyle(
-                              fontWeight: FontWeight.w900, fontSize: 15)),
-
-                      const SizedBox(width: 12),
-                      if (rating > 0) // Hide if 0.0
+                              fontWeight: FontWeight.w500,
+                              fontSize: 15)), 
+                      const SizedBox(width: 10),
+                      Icon(Icons.access_time, size: 12, color: Colors.green),
+                      const SizedBox(width: 2),
+                      Text(prepTime, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w400, color: Colors.black54)),
+                      const Spacer(),
+                      if (rating > 0)
                         Row(children: [
-                          Icon(Icons.star, size: 14, color: ratingColor),
-                          const SizedBox(width: 4),
+                          Icon(Icons.star_rounded, size: 14, color: ratingColor),
+                          const SizedBox(width: 2),
                           Text(ratingStr,
                               style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 13,
+                                  fontWeight: FontWeight.w500,
+                                  fontSize: 12,
                                   color: ratingColor))
                         ])
                     ],
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 6),
                   Text(subtitle,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                          color: Colors.grey, fontSize: 12, height: 1.3)),
+                      style: TextStyle(
+                          color: Colors.grey.shade500, 
+                          fontSize: 12, 
+                          height: 1.2)),
                 ],
               ),
             ),
-            const SizedBox(width: 16),
+            const SizedBox(width: 12), 
             Stack(
               clipBehavior: Clip.none,
               alignment: Alignment.bottomCenter,
               children: [
-                ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child: SizedBox(
-                        width: 110,
-                        height: 110,
-                        child: Stack(fit: StackFit.expand, children: [
-                          ImageFiltered(
-                              imageFilter:
-                                  ImageFilter.blur(sigmaX: 8.0, sigmaY: 8.0),
-                              child: _buildImage(imagePath, fit: BoxFit.cover)),
-                          Container(color: Colors.white.withOpacity(0.15)),
-                          _buildImage(imagePath, fit: BoxFit.contain)
-                        ]))),
-
-                // --- SHOW ORANGE OFFER BADGE IN CORNER ---
+                Container(
+                  width: 85,
+                  height: 85,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(16), 
+                    border: Border.all(color: Colors.grey.shade100)
+                  ),
+                  child: ClipRRect(
+                      borderRadius: BorderRadius.circular(16), 
+                      child: Stack(fit: StackFit.expand, children: [
+                        ImageFiltered(
+                            imageFilter:
+                                ImageFilter.blur(sigmaX: 8.0, sigmaY: 8.0),
+                            child: _buildImage(imagePath, fit: BoxFit.cover)),
+                        Container(color: Colors.white.withOpacity(0.15)),
+                        _buildImage(imagePath, fit: BoxFit.contain)
+                      ])),
+                ),
                 if (hasOffer)
                   Positioned(
                     top: 0,
-                    left: 0,
+                    right: 0, 
                     child: Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 6, vertical: 2),
+                          horizontal: 4, vertical: 2),
                       decoration: BoxDecoration(
-                          color: Colors.orange
-                              .withOpacity(0.8), // TRANSLUCENT ORANGE
+                          color: Colors.orange.withOpacity(0.9), 
                           borderRadius: const BorderRadius.only(
-                              topLeft: Radius.circular(12),
-                              bottomRight: Radius.circular(8))),
-                      child: Text("${offerPercent.toInt()}% OFF",
+                              topRight: Radius.circular(16),
+                              bottomLeft: Radius.circular(8))),
+                      child: Text("${offerPercent.toInt()}%",
                           style: const TextStyle(
                               color: Colors.white,
-                              fontSize: 9,
-                              fontWeight: FontWeight.bold)),
+                              fontSize: 8,
+                              fontWeight: FontWeight.w500)),
                     ),
                   ),
-
-                // --- SHOW TIME BADGE IN OPPOSITE CORNER ---
-                Positioned(
-                    top: 0,
-                    right: 0,
-                    child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 4, vertical: 2),
-                        decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.9),
-                            borderRadius: const BorderRadius.only(
-                                topRight: Radius.circular(12),
-                                bottomLeft: Radius.circular(8)),
-                            border: Border(
-                                bottom:
-                                    BorderSide(color: Colors.green.shade200),
-                                left:
-                                    BorderSide(color: Colors.green.shade200))),
-                        child: Row(children: [
-                          const Icon(Icons.access_time,
-                              size: 8, color: Colors.green),
-                          const SizedBox(width: 2),
-                          Text(prepTime,
-                              style: const TextStyle(
-                                  fontSize: 8,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.black87))
-                        ]))),
-
                 Positioned(
                     bottom: -10,
                     child: _buildSmallAddButton(title, subtitle, price,
@@ -1325,7 +1344,9 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
-  // --- UPDATED MENU CARD TO SHOW OFFER ---
+  // --- COMPACT POPULAR MENU CARD ---
+// --- COMPACT POPULAR MENU CARD (Aligned & Balanced) ---
+ // --- ULTRA COMPACT POPULAR MENU CARD (No Empty Bottom Space) ---
   Widget _buildMenuCard(
       String title,
       String subtitle,
@@ -1354,168 +1375,139 @@ class _HomeScreenState extends State<HomeScreen>
                   price: "₹$price",
                   imagePath: imagePath))).then((_) => setState(() {})),
       child: Container(
-        width: 155,
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.all(10), // Keep padding tight
+        width: 140, 
+        padding: const EdgeInsets.fromLTRB(8, 8, 8, 10), // Bottom padding kept tight
         decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: Colors.green.shade200, width: 1.5),
+            border: Border.all(color: primaryLightGreen.withOpacity(0.5), width: 1.2),
             boxShadow: [
               BoxShadow(
-                  color: Colors.black.withOpacity(0.03),
-                  blurRadius: 8,
-                  offset: const Offset(0, 4))
+                  color: Colors.black.withOpacity(0.02),
+                  blurRadius: 6,
+                  offset: const Offset(0, 3))
             ]),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min, // THIS SHRINKS THE CARD HEIGHT
           children: [
-            // IMAGE SECTION WITH BLUR BACKGROUND
             Stack(
               children: [
                 Container(
-                  height: 110,
+                  height: 75, 
                   width: double.infinity,
                   decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(16), 
+                    border: Border.all(color: Colors.grey.shade100)
                   ),
                   child: ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(16), 
                     child: Stack(fit: StackFit.expand, children: [
                       ImageFiltered(
-                        imageFilter:
-                            ImageFilter.blur(sigmaX: 10.0, sigmaY: 10.0),
+                        imageFilter: ImageFilter.blur(sigmaX: 10.0, sigmaY: 10.0),
                         child: Transform.scale(
                           scale: 1.2,
                           child: _buildImage(imagePath, fit: BoxFit.cover),
                         ),
                       ),
-                      Container(color: Colors.white.withOpacity(0.6)),
+                      Container(color: Colors.white.withOpacity(0.5)),
                       Padding(
-                        padding: const EdgeInsets.all(8.0),
+                        padding: const EdgeInsets.all(4.0),
                         child: ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: BorderRadius.circular(12),
                           child: _buildImage(imagePath, fit: BoxFit.contain),
                         ),
                       ),
                     ]),
                   ),
                 ),
-
-                // --- SHOW ORANGE OFFER BADGE IN CORNER ---
                 if (hasOffer)
                   Positioned(
                     top: 0,
-                    left: 0,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 6, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: Colors.orange
-                            .withOpacity(0.8), // TRANSLUCENT ORANGE
-                        borderRadius: const BorderRadius.only(
-                            topLeft: Radius.circular(12),
-                            bottomRight: Radius.circular(8)),
-                      ),
-                      child: Text("${offerPercent.toInt()}% OFF",
-                          style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 9,
-                              fontWeight: FontWeight.w900)),
-                    ),
-                  ),
-
-                // --- SHOW TIME BADGE IN OPPOSITE CORNER ---
-                Positioned(
-                    top: 0,
                     right: 0,
                     child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 6, vertical: 3),
-                        decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.9),
-                            borderRadius: const BorderRadius.only(
-                                topRight: Radius.circular(12),
-                                bottomLeft: Radius.circular(8)),
-                            border: Border(
-                                bottom:
-                                    BorderSide(color: Colors.green.shade200),
-                                left:
-                                    BorderSide(color: Colors.green.shade200))),
-                        child: Row(children: [
-                          const Icon(Icons.access_time,
-                              size: 8, color: Colors.green),
-                          const SizedBox(width: 3),
-                          Text(prepTime,
-                              style: const TextStyle(
-                                  fontSize: 8,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.black87))
-                        ]))),
+                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: Colors.orange.withOpacity(0.9), 
+                        borderRadius: const BorderRadius.only(
+                            topRight: Radius.circular(16),
+                            bottomLeft: Radius.circular(8)),
+                      ),
+                      child: Text("${offerPercent.toInt()}%",
+                          style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 8,
+                              fontWeight: FontWeight.w500)), 
+                    ),
+                  ),
               ],
             ),
+            const SizedBox(height: 6), 
+            _buildTag(orderCount, rating, isNew),
+            const SizedBox(height: 2),
+            Text(title,
+                style: const TextStyle(
+                    fontWeight: FontWeight.w500,
+                    fontSize: 13, 
+                    color: Colors.black87,
+                    height: 1.1),
+                maxLines: 1, 
+                overflow: TextOverflow.ellipsis),
+            
+            const SizedBox(height: 10), // Reduced gap
 
-            const SizedBox(height: 8),
+            // Row 1: Time & Rating
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.access_time, size: 10, color: Colors.green),
+                    const SizedBox(width: 2),
+                    Text(prepTime, style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w400, color: Colors.black54)),
+                  ],
+                ),
+                if (rating > 0)
+                  Row(children: [
+                    Icon(Icons.star_rounded, size: 12, color: ratingColor),
+                    const SizedBox(width: 2),
+                    Text(ratingStr,
+                        style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w500,
+                            color: ratingColor))
+                  ])
+              ],
+            ),
+            const SizedBox(height: 6), 
 
-            // TEXT & ACTION SECTION
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildTag(orderCount, rating, isNew),
-                  if (_buildTag(orderCount, rating, isNew) is! SizedBox)
-                    const SizedBox(height: 4),
-                  Text(title,
-                      style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 13,
-                          color: Colors.black87,
-                          height: 1.1),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis),
-                  const SizedBox(height: 2),
-                  if (rating > 0)
-                    Row(children: [
-                      Icon(Icons.star, size: 12, color: ratingColor),
-                      const SizedBox(width: 3),
-                      Text(ratingStr,
+            // Row 2: Price & Add
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (hasOffer)
+                      Text("₹$originalPrice",
                           style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                              color: ratingColor))
-                    ]),
-                  const Spacer(),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      // --- UPDATED PRICING DISPLAY ---
-                      Flexible(
-                          child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          if (hasOffer)
-                            Text("₹$originalPrice",
-                                style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 11,
-                                    color: Colors.grey.shade500,
-                                    decoration: TextDecoration.lineThrough,
-                                    height: 1)),
-                          Text("₹$price",
-                              style: const TextStyle(
-                                  fontWeight: FontWeight.w900,
-                                  fontSize: 15,
-                                  height: 1),
-                              overflow: TextOverflow.ellipsis),
-                        ],
-                      )),
-                      _buildSmallAddButton(title, subtitle, price, imagePath,
-                          quantity, category, subCategory),
-                    ],
-                  ),
-                ],
-              ),
+                              fontWeight: FontWeight.w400, 
+                              fontSize: 9,
+                              color: Colors.grey.shade400,
+                              decoration: TextDecoration.lineThrough,
+                              height: 1)),
+                    Text("₹${price.toInt()}",
+                        style: const TextStyle(
+                            fontWeight: FontWeight.w500,
+                            fontSize: 14, 
+                            height: 1)),
+                  ],
+                ),
+                _buildSmallAddButton(title, subtitle, price, imagePath,
+                    quantity, category, subCategory, isDense: true),
+              ],
             ),
           ],
         ),
@@ -1523,40 +1515,42 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
+
   Widget _buildSmallAddButton(String title, String subtitle, num price,
-      String imagePath, int quantity, String category, String subCategory) {
+      String imagePath, int quantity, String category, String subCategory, {bool isDense = false}) {
     if (quantity == 0) {
       return GestureDetector(
         onTap: () => _incrementQuantity(
             title, subtitle, price, imagePath, category, subCategory),
         child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+            padding: EdgeInsets.symmetric(horizontal: isDense ? 10 : 14, vertical: isDense ? 4 : 6),
             decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.green.shade300, width: 1),
+                border: Border.all(color: primaryLightGreen, width: 1.2),
                 boxShadow: [
                   BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
+                      color: primaryLightGreen.withOpacity(0.15),
                       blurRadius: 4,
                       offset: const Offset(0, 2))
                 ]),
-            child: const Text("ADD",
+            child: Text("ADD",
                 style: TextStyle(
                     color: Colors.green,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 12))),
+                    fontWeight: FontWeight.w500, 
+                    letterSpacing: 0.5,
+                    fontSize: isDense ? 9 : 11))), 
       );
     } else {
       return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+        padding: EdgeInsets.symmetric(horizontal: isDense ? 4 : 6, vertical: isDense ? 2 : 4),
         decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: Colors.green.shade300, width: 1),
+            border: Border.all(color: primaryLightGreen, width: 1.2),
             boxShadow: [
               BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
+                  color: primaryLightGreen.withOpacity(0.15),
                   blurRadius: 4,
                   offset: const Offset(0, 2))
             ]),
@@ -1565,22 +1559,22 @@ class _HomeScreenState extends State<HomeScreen>
           children: [
             GestureDetector(
                 onTap: () => _decrementQuantity(title),
-                child: const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 6.0),
-                    child: Icon(Icons.remove, size: 14, color: Colors.green))),
+                child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 4.0),
+                    child: Icon(Icons.remove, size: isDense ? 12 : 14, color: Colors.green))),
             Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 4.0),
+                padding: const EdgeInsets.symmetric(horizontal: 2.0),
                 child: Text('$quantity',
-                    style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 13,
+                    style: TextStyle(
+                        fontWeight: FontWeight.w500,
+                        fontSize: isDense ? 10 : 12, 
                         color: Colors.green))),
             GestureDetector(
                 onTap: () => _incrementQuantity(
                     title, subtitle, price, imagePath, category, subCategory),
-                child: const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 6.0),
-                    child: Icon(Icons.add, size: 14, color: Colors.green))),
+                child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 4.0),
+                    child: Icon(Icons.add, size: isDense ? 12 : 14, color: Colors.green))),
           ],
         ),
       );
@@ -1599,12 +1593,12 @@ class _HomeScreenState extends State<HomeScreen>
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
         decoration: BoxDecoration(
-            color: mcdLightGreen,
-            borderRadius: BorderRadius.circular(12),
+            color: primaryLightGreen,
+            borderRadius: BorderRadius.circular(16),
             boxShadow: [
               BoxShadow(
-                  color: Colors.green.withOpacity(0.3),
-                  blurRadius: 8,
+                  color: primaryLightGreen.withOpacity(0.4),
+                  blurRadius: 10,
                   offset: const Offset(0, 4))
             ]),
         child: Row(
@@ -1613,17 +1607,17 @@ class _HomeScreenState extends State<HomeScreen>
             Text(
                 "${_cartManager.itemCount} Item${_cartManager.itemCount > 1 ? 's' : ''}  |  ₹${cartTotal.toStringAsFixed(0)}",
                 style: const TextStyle(
-                    color: Colors.white,
+                    color: Colors.black87,
                     fontSize: 14,
-                    fontWeight: FontWeight.bold)),
+                    fontWeight: FontWeight.w500)), 
             Row(children: const [
               Text("View Cart",
                   style: TextStyle(
-                      color: Colors.white,
+                      color: Colors.black87,
                       fontSize: 14,
-                      fontWeight: FontWeight.bold)),
+                      fontWeight: FontWeight.w500)), 
               SizedBox(width: 4),
-              Icon(Icons.arrow_right, color: Colors.white, size: 20)
+              Icon(Icons.arrow_right, color: Colors.black87, size: 20)
             ])
           ],
         ),
@@ -1657,22 +1651,22 @@ class _HomeScreenState extends State<HomeScreen>
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
               decoration: BoxDecoration(
                   color: isActive
-                      ? Colors.green.shade100.withOpacity(0.6)
+                      ? primaryLightGreen.withOpacity(0.3)
                       : Colors.transparent,
                   borderRadius: BorderRadius.circular(20)),
               child: Icon(icon,
                   size: isActive ? 24 : 22,
                   color:
-                      isActive ? Colors.green.shade800 : Colors.grey.shade500),
+                      isActive ? darkGreenText : Colors.grey.shade500),
             ),
             const SizedBox(height: 4),
             AnimatedDefaultTextStyle(
               duration: const Duration(milliseconds: 250),
               style: TextStyle(
                   fontSize: isActive ? 11 : 10,
-                  fontWeight: isActive ? FontWeight.w800 : FontWeight.w500,
+                  fontWeight: isActive ? FontWeight.w500 : FontWeight.w400,
                   color:
-                      isActive ? Colors.green.shade800 : Colors.grey.shade500,
+                      isActive ? darkGreenText : Colors.grey.shade500,
                   fontFamily: 'Poppins'),
               child: Text(label),
             ),
@@ -1700,7 +1694,7 @@ class _HomeScreenState extends State<HomeScreen>
     }
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: const Color(0xFFFDFDFD), // Clean white background
       bottomNavigationBar: Container(
         height: 60,
         decoration: BoxDecoration(color: Colors.white, boxShadow: [
@@ -1715,7 +1709,7 @@ class _HomeScreenState extends State<HomeScreen>
             children: [
               _buildModernNavItem(Icons.home_rounded, "Home", 0,
                   isActive: true),
-              _buildModernNavItem(Icons.local_offer, "Deals", 1,
+              _buildModernNavItem(Icons.local_offer_outlined, "Deals", 1,
                   isActive: false),
               _buildModernNavItem(Icons.receipt_long_outlined, "Orders", 2,
                   isActive: false),
@@ -1727,6 +1721,7 @@ class _HomeScreenState extends State<HomeScreen>
         child: Stack(
           children: [
             RefreshIndicator(
+              color: primaryLightGreen,
               onRefresh: _handleRefresh,
               child: SingleChildScrollView(
                 physics: const AlwaysScrollableScrollPhysics(),
@@ -1737,7 +1732,6 @@ class _HomeScreenState extends State<HomeScreen>
                   children: [
                     const SizedBox(height: 10),
 
-                    // --- NEW ROW 1: PROFILE & NOTIFICATIONS (AT THE VERY TOP) ---
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 20.0),
                       child: Row(
@@ -1752,28 +1746,28 @@ class _HomeScreenState extends State<HomeScreen>
                             child: Row(
                               children: [
                                 Container(
-                                  height: 45,
-                                  width: 45,
+                                  height: 40, 
+                                  width: 40, 
                                   decoration: BoxDecoration(
-                                      color: themeColor,
+                                      color: primaryLightGreen.withOpacity(0.4),
                                       shape: BoxShape.circle),
-                                  child: const Icon(Icons.person,
-                                      color: Colors.black54, size: 24),
+                                  child: Icon(Icons.person,
+                                      color: darkGreenText, size: 20),
                                 ),
-                                const SizedBox(width: 12),
+                                const SizedBox(width: 10),
                                 Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text("Welcome back,",
                                         style: TextStyle(
-                                            color: Colors.grey.shade600,
-                                            fontSize: 13,
-                                            fontWeight: FontWeight.w500)),
+                                            color: Colors.grey.shade500,
+                                            fontSize: 12, 
+                                            fontWeight: FontWeight.w400)), 
                                     Text(firstName,
                                         style: TextStyle(
-                                            color: darkGreen,
-                                            fontSize: 20,
-                                            fontWeight: FontWeight.w900)),
+                                            color: darkGreenText,
+                                            fontSize: 16, 
+                                            fontWeight: FontWeight.w500)), 
                                   ],
                                 ),
                               ],
@@ -1813,16 +1807,16 @@ class _HomeScreenState extends State<HomeScreen>
                                               builder: (_) =>
                                                   const NotificationScreen())),
                                       child: Container(
-                                        height: 45,
-                                        width: 45,
-                                        decoration: const BoxDecoration(
-                                          color: Color(0xFFC1E1CA),
+                                        height: 40, 
+                                        width: 40, 
+                                        decoration: BoxDecoration(
+                                          color: primaryLightGreen.withOpacity(0.3),
                                           shape: BoxShape.circle,
                                         ),
                                         child: Icon(
                                             Icons.notifications_outlined,
-                                            color: darkGreen,
-                                            size: 24),
+                                            color: darkGreenText,
+                                            size: 22),
                                       ),
                                     ),
                                     if (unreadCount > 0)
@@ -1830,18 +1824,23 @@ class _HomeScreenState extends State<HomeScreen>
                                         right: -2,
                                         top: -2,
                                         child: Container(
-                                          padding: const EdgeInsets.all(5),
+                                          padding: const EdgeInsets.all(4),
+                                          constraints: const BoxConstraints(
+                                            minWidth: 16,
+                                            minHeight: 16,
+                                          ),
+                                          alignment: Alignment.center,
                                           decoration: BoxDecoration(
-                                              color: Colors.red,
+                                              color: Colors.red.shade400,
                                               shape: BoxShape.circle,
                                               border: Border.all(
                                                   color: Colors.white,
-                                                  width: 2)),
+                                                  width: 1.5)),
                                           child: Text('$unreadCount',
                                               style: const TextStyle(
                                                   color: Colors.white,
-                                                  fontSize: 10,
-                                                  fontWeight: FontWeight.bold)),
+                                                  fontSize: 9,
+                                                  fontWeight: FontWeight.w500)), 
                                         ),
                                       )
                                   ],
@@ -1850,9 +1849,8 @@ class _HomeScreenState extends State<HomeScreen>
                         ],
                       ),
                     ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 15), 
 
-                    // --- NEW ROW 2: SEARCH, FILTER & FAVORITE (HEIGHT DECREASED TO 42) ---
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 20.0),
                       child: Row(
@@ -1864,23 +1862,24 @@ class _HomeScreenState extends State<HomeScreen>
                                   MaterialPageRoute(
                                       builder: (_) => const SearchPage())),
                               child: Container(
-                                height: 42,
+                                height: 42, 
                                 padding:
-                                    const EdgeInsets.symmetric(horizontal: 15),
+                                    const EdgeInsets.symmetric(horizontal: 14),
                                 decoration: BoxDecoration(
-                                    color: Colors.grey.shade100,
-                                    borderRadius: BorderRadius.circular(14),
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(12),
                                     border: Border.all(
-                                        color: Colors.grey.shade200)),
+                                        color: Colors.grey.shade200, width: 1.5)),
                                 child: Row(
                                   children: [
                                     Icon(Icons.search,
-                                        color: Colors.grey.shade500, size: 20),
-                                    const SizedBox(width: 10),
+                                        color: Colors.grey.shade400, size: 20),
+                                    const SizedBox(width: 8),
                                     Text("Search for food...",
                                         style: TextStyle(
                                             color: Colors.grey.shade500,
-                                            fontSize: 13)),
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w400)), 
                                   ],
                                 ),
                               ),
@@ -1894,22 +1893,22 @@ class _HomeScreenState extends State<HomeScreen>
                               });
                             },
                             child: Container(
-                                height: 42,
-                                width: 42,
+                                height: 42, 
+                                width: 42, 
                                 decoration: BoxDecoration(
                                     color: _isFilterVisible
-                                        ? themeColor
-                                        : Colors.grey.shade100,
-                                    borderRadius: BorderRadius.circular(14),
+                                        ? primaryLightGreen.withOpacity(0.3)
+                                        : Colors.white,
+                                    borderRadius: BorderRadius.circular(12),
                                     border: Border.all(
                                         color: _isFilterVisible
-                                            ? darkGreen
-                                            : Colors.grey.shade200)),
+                                            ? primaryLightGreen
+                                            : Colors.grey.shade200, width: 1.5)),
                                 child: Icon(Icons.tune,
                                     color: _isFilterVisible
-                                        ? darkGreen
-                                        : Colors.black54,
-                                    size: 20)),
+                                        ? darkGreenText
+                                        : Colors.grey.shade500,
+                                    size: 20)), 
                           ),
                           const SizedBox(width: 10),
                           GestureDetector(
@@ -1919,35 +1918,35 @@ class _HomeScreenState extends State<HomeScreen>
                                         builder: (_) => const FavoriteScreen()))
                                 .then((_) => setState(() {})),
                             child: Container(
-                              height: 42,
-                              width: 42,
+                              height: 42, 
+                              width: 42, 
                               decoration: BoxDecoration(
-                                  color: Colors.grey.shade100,
-                                  borderRadius: BorderRadius.circular(14),
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(12),
                                   border:
-                                      Border.all(color: Colors.grey.shade200)),
+                                      Border.all(color: Colors.grey.shade200, width: 1.5)),
                               child: Stack(
                                 alignment: Alignment.center,
                                 clipBehavior: Clip.none,
                                 children: [
-                                  const Icon(Icons.favorite_border,
-                                      color: Colors.black54, size: 20),
+                                  Icon(Icons.favorite_border,
+                                      color: Colors.grey.shade500, size: 20), 
                                   if (_favoriteManager.favoriteItems.isNotEmpty)
                                     Positioned(
                                         right: -2,
                                         top: -2,
                                         child: Container(
                                             padding: const EdgeInsets.all(4),
-                                            decoration: const BoxDecoration(
-                                                color: Colors.green,
+                                            decoration: BoxDecoration(
+                                                color: Colors.red.shade400,
                                                 shape: BoxShape.circle),
                                             child: Text(
                                                 '${_favoriteManager.favoriteItems.length}',
                                                 style: const TextStyle(
                                                     color: Colors.white,
-                                                    fontSize: 10,
+                                                    fontSize: 9,
                                                     fontWeight:
-                                                        FontWeight.bold)))),
+                                                        FontWeight.w500)))), 
                                 ],
                               ),
                             ),
@@ -1972,44 +1971,47 @@ class _HomeScreenState extends State<HomeScreen>
                               }),
                               child: Container(
                                 padding: const EdgeInsets.symmetric(
-                                    horizontal: 14, vertical: 6),
+                                    horizontal: 14, vertical: 8),
                                 decoration: BoxDecoration(
                                     color:
-                                        isSelected ? themeColor : Colors.white,
+                                        isSelected ? primaryLightGreen.withOpacity(0.2) : Colors.white,
                                     borderRadius: BorderRadius.circular(20),
                                     border: Border.all(
                                         color: isSelected
-                                            ? Colors.green
-                                            : Colors.grey.shade300)),
+                                            ? primaryLightGreen
+                                            : Colors.grey.shade200)),
                                 child: Text(filter,
                                     style: TextStyle(
-                                        fontSize: 11,
+                                        fontSize: 12,
                                         color: isSelected
-                                            ? Colors.green.shade800
-                                            : Colors.black87,
+                                            ? darkGreenText
+                                            : Colors.grey.shade600,
                                         fontWeight: isSelected
-                                            ? FontWeight.bold
-                                            : FontWeight.normal)),
+                                            ? FontWeight.w500 
+                                            : FontWeight.w400)),
                               ),
                             );
                           }).toList(),
                         ),
                       ),
 
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 25),
                     if (user != null) _buildUnseenRefundBanners(user.uid),
                     _buildAnnouncementCarousel(),
                     if (user != null) _buildActiveOrderStatus(user.uid),
 
+                    // --- UNIFORM HEADINGS ---
                     const Padding(
                         padding: EdgeInsets.symmetric(horizontal: 20.0),
                         child: Text("Categories",
                             style: TextStyle(
-                                fontSize: 18, fontWeight: FontWeight.bold))),
-                    const SizedBox(height: 12),
+                                fontSize: 16, 
+                                fontWeight: FontWeight.w500,
+                                color: Colors.black87))),
+                    const SizedBox(height: 10),
 
                     SizedBox(
-                      height: 80,
+                      height: 65, 
                       child: StreamBuilder<QuerySnapshot>(
                         stream: FirebaseFirestore.instance
                             .collection('categories')
@@ -2017,9 +2019,9 @@ class _HomeScreenState extends State<HomeScreen>
                             .snapshots(),
                         builder: (context, snapshot) {
                           if (!snapshot.hasData)
-                            return const Center(
+                            return Center(
                                 child: CircularProgressIndicator(
-                                    color: Colors.green));
+                                    color: primaryLightGreen));
                           var docs = snapshot.data!.docs;
                           List<Map<String, dynamic>> allCats = docs
                               .map((d) => d.data() as Map<String, dynamic>)
@@ -2041,7 +2043,7 @@ class _HomeScreenState extends State<HomeScreen>
                             itemBuilder: (context, index) {
                               var catData = allCats[index];
                               return Padding(
-                                  padding: const EdgeInsets.only(right: 12),
+                                  padding: const EdgeInsets.only(right: 10),
                                   child: _categoryBox(
                                       catData['name'] ?? 'Unknown',
                                       catData['image'] ?? ''));
@@ -2050,7 +2052,7 @@ class _HomeScreenState extends State<HomeScreen>
                         },
                       ),
                     ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 25),
                     _selectedCategory == "All"
                         ? _buildAllCategoriesLayout()
                         : _buildSubCategoryLayout(_selectedCategory),

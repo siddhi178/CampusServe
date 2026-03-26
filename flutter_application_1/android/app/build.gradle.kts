@@ -11,6 +11,8 @@ android {
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
+        // ✅ CORRECT SYNTAX FOR .kts FILES: Added 'is'
+        isCoreLibraryDesugaringEnabled = true 
         sourceCompatibility = JavaVersion.VERSION_1_8
         targetCompatibility = JavaVersion.VERSION_1_8
     }
@@ -21,14 +23,10 @@ android {
 
     defaultConfig {
         applicationId = "com.example.flutter_application_1"
-        
-        // ✅ CHANGED: Min SDK to 21 for Razorpay/Firebase
         minSdk = flutter.minSdkVersion 
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
-        
-        // ✅ ADDED: MultiDex Enabled
         multiDexEnabled = true 
     }
 
@@ -52,4 +50,5 @@ flutter {
 dependencies {
     implementation("com.google.android.material:material:1.11.0")
     implementation("androidx.multidex:multidex:2.0.1")
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.4")
 }
